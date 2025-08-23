@@ -1,0 +1,2 @@
+# risu-rs
+Fuck Ruby.

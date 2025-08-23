@@ -1,0 +1,135 @@
+use diesel::prelude::*;
+use diesel::sqlite::SqliteConnection;
+use std::net::IpAddr;
+
+use crate::schema::{
+    nessus_hosts, nessus_items, nessus_plugins,
+};
+
+#[derive(Debug, Queryable, Identifiable)]
+#[diesel(table_name = nessus_hosts)]
+pub struct Host {
+    pub id: i32,
+    pub nessus_report_id: Option<i32>,
+    pub name: Option<String>,
+    pub os: Option<String>,
+    pub mac: Option<String>,
+    pub start: Option<chrono::NaiveDateTime>,
+    pub end: Option<chrono::NaiveDateTime>,
+    pub ip: Option<String>,
+    pub fqdn: Option<String>,
+    pub netbios: Option<String>,
+    pub notes: Option<String>,
+    pub risk_score: Option<i32>,
+    pub user_id: Option<i32>,
+    pub engagement_id: Option<i32>,
+}
+
+#[derive(Debug, Queryable, Identifiable, Associations)]
+#[diesel(belongs_to(Host, foreign_key = host_id))]
+#[diesel(belongs_to(Plugin, foreign_key = plugin_id))]
+#[diesel(table_name = nessus_items)]
+pub struct Item {
+    pub id: i32,
+    pub host_id: Option<i32>,
+    pub plugin_id: Option<i32>,
+    pub attachment_id: Option<i32>,
+    pub plugin_output: Option<String>,
+    pub port: Option<i32>,
+    pub svc_name: Option<String>,
+    pub protocol: Option<String>,
+    pub severity: Option<i32>,
+    pub plugin_name: Option<String>,
+    pub verified: Option<bool>,
+    pub cm_compliance_info: Option<String>,
+    pub cm_compliance_actual_value: Option<String>,
+    pub cm_compliance_check_id: Option<String>,
+    pub cm_compliance_policy_value: Option<String>,
+    pub cm_compliance_audit_file: Option<String>,
+    pub cm_compliance_check_name: Option<String>,
+    pub cm_compliance_result: Option<String>,
+    pub cm_compliance_output: Option<String>,
+    pub cm_compliance_reference: Option<String>,
+    pub cm_compliance_see_also: Option<String>,
+    pub cm_compliance_solution: Option<String>,
+    pub real_severity: Option<i32>,
+    pub risk_score: Option<i32>,
+    pub user_id: Option<i32>,
+    pub engagement_id: Option<i32>,
+}
+
+#[derive(Debug, Queryable, Identifiable)]
+#[diesel(table_name = nessus_plugins)]
+pub struct Plugin {
+    pub id: i32,
+    pub plugin_id: Option<i32>,
+    pub plugin_name: Option<String>,
+    pub family_name: Option<String>,
+    pub description: Option<String>,
+    pub plugin_version: Option<String>,
+    pub plugin_publication_date: Option<chrono::NaiveDateTime>,
+    pub plugin_modification_date: Option<chrono::NaiveDateTime>,
+    pub vuln_publication_date: Option<chrono::NaiveDateTime>,
+    pub cvss_vector: Option<String>,
+    pub cvss_base_score: Option<f32>,
+    pub cvss_temporal_score: Option<String>,
+    pub cvss_temporal_vector: Option<String>,
+    pub exploitability_ease: Option<String>,
+    pub exploit_framework_core: Option<String>,
+    pub exploit_framework_metasploit: Option<String>,
+    pub metasploit_name: Option<String>,
+    pub exploit_framework_canvas: Option<String>,
+    pub canvas_package: Option<String>,
+    pub exploit_available: Option<String>,
+    pub risk_factor: Option<String>,
+    pub solution: Option<String>,
+    pub synopsis: Option<String>,
+    pub plugin_type: Option<String>,
+    pub exploit_framework_exploithub: Option<String>,
+    pub exploithub_sku: Option<String>,
+    pub stig_severity: Option<String>,
+    pub fname: Option<String>,
+    pub always_run: Option<String>,
+    pub script_version: Option<String>,
+    pub d2_elliot_name: Option<String>,
+    pub exploit_framework_d2_elliot: Option<String>,
+    pub exploited_by_malware: Option<String>,
+    pub rollup: Option<bool>,
+    pub risk_score: Option<i32>,
+    pub compliance: Option<String>,
+    pub root_cause: Option<String>,
+    pub agent: Option<String>,
+    pub potential_vulnerability: Option<bool>,
+    pub in_the_news: Option<bool>,
+    pub exploited_by_nessus: Option<bool>,
+    pub unsupported_by_vendor: Option<bool>,
+    pub default_account: Option<bool>,
+    pub user_id: Option<i32>,
+    pub engagement_id: Option<i32>,
+    pub policy_id: Option<i32>,
+}
+
+impl Host {
+    pub fn sorted(conn: &mut SqliteConnection) -> QueryResult<Vec<Host>> {
+        use crate::schema::nessus_hosts::dsl::*;
+        let mut results = nessus_hosts
+            .filter(ip.is_not_null())
+            .order(ip.asc())
+            .load::<Host>(conn)?;
+        results.sort_by(|a, b| {
+            let ia = a.ip.as_ref().and_then(|s| s.parse::<IpAddr>().ok());
+            let ib = b.ip.as_ref().and_then(|s| s.parse::<IpAddr>().ok());
+            ia.cmp(&ib)
+        });
+        Ok(results)
+    }
+
+    pub fn ip_list(conn: &mut SqliteConnection) -> QueryResult<String> {
+        let hosts = Host::sorted(conn)?;
+        Ok(hosts
+            .into_iter()
+            .filter_map(|h| h.ip)
+            .collect::<Vec<_>>()
+            .join("\n"))
+    }
+}

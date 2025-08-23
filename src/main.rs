@@ -14,12 +14,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Generate a configuration file
-    CreateConfig {
-        /// Optional template to base the config on
-        #[arg(long)]
-        template: Option<String>,
-    },
+    /// Generate a configuration file with default values
+    CreateConfig,
     /// Run database migrations
     Migrate {
         /// Create tables in the database
@@ -40,8 +36,11 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::CreateConfig { template } => {
-            config::generate(template.as_deref());
+        Commands::CreateConfig => {
+            let path = std::path::Path::new("config.yml");
+            if let Err(e) = config::create_config(path) {
+                eprintln!("failed to write config: {e}");
+            }
         }
         Commands::Migrate {
             create_tables,

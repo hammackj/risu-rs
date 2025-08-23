@@ -51,8 +51,14 @@ fn main() {
             migrate::run(create_tables, drop_tables);
         }
         Commands::Parse { file } => {
-            let data = parser::parse_file(&file);
-            postprocess::process(&data);
+            match parser::parse_file(&file) {
+                Ok(mut report) => {
+                    postprocess::process(&mut report);
+                }
+                Err(e) => {
+                    eprintln!("failed to parse file: {e}");
+                }
+            }
         }
     }
 }

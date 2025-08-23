@@ -1,9 +1,244 @@
-use std::fs;
 use std::path::Path;
 
-/// Parse an input file and return its contents
-pub fn parse_file(path: &Path) -> String {
-    println!("Parsing file: {}", path.display());
-    fs::read_to_string(path).unwrap_or_default()
+use quick_xml::events::Event;
+use quick_xml::Reader;
+
+use crate::models::{Host, Item, Plugin};
+
+/// Parsed representation of a Nessus report.
+#[derive(Default)]
+pub struct NessusReport {
+    pub version: String,
+    pub hosts: Vec<Host>,
+    pub items: Vec<Item>,
+    pub plugins: Vec<Plugin>,
 }
+
+/// Validate and parse a Nessus XML file into ORM models.
+pub fn parse_file(path: &Path) -> Result<NessusReport, Box<dyn std::error::Error>> {
+    println!("Parsing file: {}", path.display());
+
+    let mut reader = Reader::from_file(path)?;
+    reader.trim_text(true);
+
+    let mut buf = Vec::new();
+
+    let mut report = NessusReport::default();
+    let mut current_host: Option<Host> = None;
+    let mut current_tag: Option<String> = None;
+
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"NessusClientData_v2" => {
+                    for a in e.attributes().flatten() {
+                        if a.key.as_ref() == b"version" {
+                            report.version = a.unescape_value()?.to_string();
+                        }
+                    }
+                }
+                b"ReportHost" => {
+                    let mut host = empty_host();
+                    for a in e.attributes().flatten() {
+                        if a.key.as_ref() == b"name" {
+                            host.name = Some(a.unescape_value()?.to_string());
+                        }
+                    }
+                    current_host = Some(host);
+                }
+                b"HostProperties" => {
+                    // nothing to do, tags will follow
+                }
+                b"tag" => {
+                    for a in e.attributes().flatten() {
+                        if a.key.as_ref() == b"name" {
+                            current_tag = Some(a.unescape_value()?.to_string());
+                        }
+                    }
+                }
+                b"ReportItem" => {
+                    let mut item = empty_item();
+                    for a in e.attributes().flatten() {
+                        match a.key.as_ref() {
+                            b"pluginID" => {
+                                item.plugin_id = a
+                                    .unescape_value()
+                                    .ok()
+                                    .and_then(|v| v.parse().ok());
+                            }
+                            b"port" => {
+                                item.port = a
+                                    .unescape_value()
+                                    .ok()
+                                    .and_then(|v| v.parse().ok());
+                            }
+                            b"svc_name" => {
+                                item.svc_name = Some(a.unescape_value()?.to_string());
+                            }
+                            b"protocol" => {
+                                item.protocol = Some(a.unescape_value()?.to_string());
+                            }
+                            b"severity" => {
+                                item.severity = a
+                                    .unescape_value()
+                                    .ok()
+                                    .and_then(|v| v.parse().ok());
+                            }
+                            b"pluginName" => {
+                                item.plugin_name = Some(a.unescape_value()?.to_string());
+                            }
+                            _ => {}
+                        }
+                    }
+                    report.items.push(item);
+                }
+                _ => {}
+            },
+            Event::Text(e) => {
+                if let Some(tag) = &current_tag {
+                    if let Some(host) = &mut current_host {
+                        let val = e.unescape()?.into_owned();
+                        match tag.as_str() {
+                            "host-ip" => host.ip = Some(val),
+                            "host-fqdn" => host.fqdn = Some(val),
+                            "netbios-name" => host.netbios = Some(val),
+                            "operating-system" => host.os = Some(val),
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            Event::End(e) => match e.name().as_ref() {
+                b"tag" => {
+                    current_tag = None;
+                }
+                b"ReportHost" => {
+                    if let Some(host) = current_host.take() {
+                        report.hosts.push(host);
+                    }
+                }
+                _ => {}
+            },
+            Event::Eof => break,
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    // very naive plugin collection: deduplicate by plugin_id from items
+    for item in &report.items {
+        if let Some(pid) = item.plugin_id {
+            if !report.plugins.iter().any(|p| p.plugin_id == Some(pid)) {
+                let mut plugin = empty_plugin();
+                plugin.plugin_id = Some(pid);
+                plugin.plugin_name = item.plugin_name.clone();
+                report.plugins.push(plugin);
+            }
+        }
+    }
+
+    Ok(report)
+}
+
+fn empty_host() -> Host {
+    Host {
+        id: 0,
+        nessus_report_id: None,
+        name: None,
+        os: None,
+        mac: None,
+        start: None,
+        end: None,
+        ip: None,
+        fqdn: None,
+        netbios: None,
+        notes: None,
+        risk_score: None,
+        user_id: None,
+        engagement_id: None,
+    }
+}
+
+fn empty_item() -> Item {
+    Item {
+        id: 0,
+        host_id: None,
+        plugin_id: None,
+        attachment_id: None,
+        plugin_output: None,
+        port: None,
+        svc_name: None,
+        protocol: None,
+        severity: None,
+        plugin_name: None,
+        verified: None,
+        cm_compliance_info: None,
+        cm_compliance_actual_value: None,
+        cm_compliance_check_id: None,
+        cm_compliance_policy_value: None,
+        cm_compliance_audit_file: None,
+        cm_compliance_check_name: None,
+        cm_compliance_result: None,
+        cm_compliance_output: None,
+        cm_compliance_reference: None,
+        cm_compliance_see_also: None,
+        cm_compliance_solution: None,
+        real_severity: None,
+        risk_score: None,
+        user_id: None,
+        engagement_id: None,
+    }
+}
+
+fn empty_plugin() -> Plugin {
+    Plugin {
+        id: 0,
+        plugin_id: None,
+        plugin_name: None,
+        family_name: None,
+        description: None,
+        plugin_version: None,
+        plugin_publication_date: None,
+        plugin_modification_date: None,
+        vuln_publication_date: None,
+        cvss_vector: None,
+        cvss_base_score: None,
+        cvss_temporal_score: None,
+        cvss_temporal_vector: None,
+        exploitability_ease: None,
+        exploit_framework_core: None,
+        exploit_framework_metasploit: None,
+        metasploit_name: None,
+        exploit_framework_canvas: None,
+        canvas_package: None,
+        exploit_available: None,
+        risk_factor: None,
+        solution: None,
+        synopsis: None,
+        plugin_type: None,
+        exploit_framework_exploithub: None,
+        exploithub_sku: None,
+        stig_severity: None,
+        fname: None,
+        always_run: None,
+        script_version: None,
+        d2_elliot_name: None,
+        exploit_framework_d2_elliot: None,
+        exploited_by_malware: None,
+        rollup: None,
+        risk_score: None,
+        compliance: None,
+        root_cause: None,
+        agent: None,
+        potential_vulnerability: None,
+        in_the_news: None,
+        exploited_by_nessus: None,
+        unsupported_by_vendor: None,
+        default_account: None,
+        user_id: None,
+        engagement_id: None,
+        policy_id: None,
+    }
+}
+
 

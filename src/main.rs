@@ -2,6 +2,8 @@ mod config;
 mod migrate;
 mod parser;
 mod postprocess;
+mod schema;
+mod models;
 
 use clap::{Parser, Subcommand};
 

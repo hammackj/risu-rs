@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
+diesel = { version = "2.1", features = ["sqlite", "chrono", "r2d2", "64-column-tables"] }
+diesel_migrations = { version = "2.1", features = ["sqlite"] }
+chrono = { version = "0.4", features = ["serde"] }

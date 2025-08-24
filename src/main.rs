@@ -38,6 +38,9 @@ enum Commands {
         /// Output file for generated document
         #[arg(short, long, default_value = "output.pdf")]
         output: std::path::PathBuf,
+        /// Run post-processing plugins on the parsed data
+        #[arg(long)]
+        post_process: bool,
     },
 }
 
@@ -57,10 +60,12 @@ fn main() {
         } => {
             migrate::run(create_tables, drop_tables);
         }
-        Commands::Parse { file, template: tmpl_name, output } => {
+        Commands::Parse { file, template: tmpl_name, output, post_process } => {
             match parser::parse_file(&file) {
                 Ok(mut report) => {
-                    postprocess::process(&mut report);
+                    if post_process {
+                        postprocess::process(&mut report);
+                    }
 
                     let cfg = config::load_config(std::path::Path::new("config.yml"))
                         .unwrap_or_default();
@@ -85,7 +90,7 @@ fn main() {
                         }
                         None => {
                             eprintln!(
-                                "unknown template '{}'\. available: {:?}",
+                                "unknown template '{}'. available: {:?}",
                                 tmpl_name,
                                 manager.available()
                             );

@@ -39,6 +39,9 @@ struct Cli {
     /// List available post-processing plugins
     #[arg(long = "list-post-process")]
     list_post_process: bool,
+    /// List available templates
+    #[arg(long = "list-templates")]
+    list_templates: bool,
     /// Open an interactive database console
     #[arg(long)]
     console: bool,
@@ -123,6 +126,27 @@ fn run() -> Result<(), error::Error> {
         return Ok(());
     }
 
+    if cli.list_templates {
+        let cfg = config::load_config(std::path::Path::new("config.yml")).unwrap_or_default();
+        let paths = cfg
+            .template_paths
+            .iter()
+            .map(std::path::PathBuf::from)
+            .collect();
+        let mut manager = template::TemplateManager::new(paths);
+        manager.register(Box::new(template::SimpleTemplate));
+        manager.register(Box::new(templates::TemplateTemplate));
+        manager.register(Box::new(templates::HostSummaryTemplate));
+        manager.register(Box::new(templates::PCIComplianceTemplate));
+        manager.register(Box::new(templates::StigFindingsSummaryTemplate));
+        manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
+        manager.load_templates().map_err(error::Error::Template)?;
+        for name in manager.available() {
+            println!("{}", name);
+        }
+        return Ok(());
+    }
+
     match cli.command {
         Some(Commands::CreateConfig) => {
             let path = std::path::Path::new("config.yml");
@@ -156,6 +180,9 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(template::SimpleTemplate));
             manager.register(Box::new(templates::TemplateTemplate));
             manager.register(Box::new(templates::HostSummaryTemplate));
+            manager.register(Box::new(templates::PCIComplianceTemplate));
+            manager.register(Box::new(templates::StigFindingsSummaryTemplate));
+            manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
             manager.load_templates().map_err(error::Error::Template)?;
             let tmpl = manager.get(&tmpl_name).ok_or_else(|| {
                 error::Error::Config(format!(

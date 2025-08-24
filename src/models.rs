@@ -314,7 +314,6 @@ mod tests {
     use super::*;
     use crate::migrate::MIGRATIONS;
     use crate::schema::nessus_hosts;
-    use diesel::prelude::*;
     use diesel::sqlite::SqliteConnection;
     use diesel_migrations::MigrationHarness;
 

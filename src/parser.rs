@@ -7,7 +7,8 @@ use quick_xml::Reader;
 use quick_xml::events::Event;
 use tracing::{debug, info};
 
-use crate::models::{Host, Item, Plugin};
+use crate::models::{Host, Item, Patch, Plugin};
+use regex::Regex;
 
 /// Parsed representation of a Nessus report.
 #[derive(Default)]
@@ -16,6 +17,7 @@ pub struct NessusReport {
     pub hosts: Vec<Host>,
     pub items: Vec<Item>,
     pub plugins: Vec<Plugin>,
+    pub patches: Vec<Patch>,
 }
 
 /// Validate and parse a Nessus XML file into ORM models.
@@ -30,6 +32,9 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
     let mut report = NessusReport::default();
     let mut current_host: Option<Host> = None;
     let mut current_tag: Option<String> = None;
+    let mut current_patches: Vec<Patch> = Vec::new();
+
+    let patch_re = Regex::new("(?i)ms\\d{2}-\\d+").unwrap();
 
     // Track XML elements or attributes we don't explicitly handle so developers
     // can spot schema changes.
@@ -64,6 +69,7 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         }
                     }
                     current_host = Some(host);
+                    current_patches.clear();
                 }
                 b"HostProperties" => {
                     // nothing to do, tags will follow
@@ -120,12 +126,19 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                 if let Some(tag) = &current_tag {
                     if let Some(host) = &mut current_host {
                         let val = e.unescape()?.into_owned();
-                        match tag.as_str() {
-                            "host-ip" => host.ip = Some(val),
-                            "host-fqdn" => host.fqdn = Some(val),
-                            "netbios-name" => host.netbios = Some(val),
-                            "operating-system" => host.os = Some(val),
-                            _ => {}
+                        if patch_re.is_match(tag) {
+                            let mut patch = empty_patch();
+                            patch.name = Some(tag.clone());
+                            patch.value = Some(val);
+                            current_patches.push(patch);
+                        } else {
+                            match tag.as_str() {
+                                "host-ip" => host.ip = Some(val),
+                                "host-fqdn" => host.fqdn = Some(val),
+                                "netbios-name" => host.netbios = Some(val),
+                                "operating-system" => host.os = Some(val),
+                                _ => {}
+                            }
                         }
                     }
                 }
@@ -137,6 +150,11 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                 b"ReportHost" => {
                     if let Some(host) = current_host.take() {
                         report.hosts.push(host);
+                        let host_index = (report.hosts.len() - 1) as i32;
+                        for mut patch in current_patches.drain(..) {
+                            patch.host_id = Some(host_index);
+                            report.patches.push(patch);
+                        }
                     }
                 }
                 _ => {}
@@ -181,6 +199,9 @@ mod tests {
         assert_eq!(report.hosts.len(), 1);
         assert_eq!(report.hosts[0].ip.as_deref(), Some("192.168.0.1"));
         assert_eq!(report.plugins.len(), 1);
+        assert_eq!(report.patches.len(), 1);
+        assert_eq!(report.patches[0].name.as_deref(), Some("MS12-001"));
+        assert_eq!(report.patches[0].value.as_deref(), Some("KB123456"));
     }
 }
 
@@ -282,5 +303,16 @@ fn empty_plugin() -> Plugin {
         user_id: None,
         engagement_id: None,
         policy_id: None,
+    }
+}
+
+fn empty_patch() -> Patch {
+    Patch {
+        id: 0,
+        host_id: None,
+        name: None,
+        value: None,
+        user_id: None,
+        engagement_id: None,
     }
 }

@@ -8,7 +8,7 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::net::IpAddr;
 
-use crate::schema::{nessus_hosts, nessus_items, nessus_plugins};
+use crate::schema::{nessus_hosts, nessus_items, nessus_patches, nessus_plugins};
 
 #[derive(Debug, Queryable, Identifiable)]
 #[diesel(table_name = nessus_hosts)]
@@ -144,6 +144,31 @@ pub struct Plugin {
     pub user_id: Option<i32>,
     pub engagement_id: Option<i32>,
     pub policy_id: Option<i32>,
+}
+
+#[derive(Debug, Queryable, Identifiable, Associations)]
+#[diesel(belongs_to(Host, foreign_key = host_id))]
+#[diesel(table_name = nessus_patches)]
+pub struct Patch {
+    pub id: i32,
+    pub host_id: Option<i32>,
+    pub name: Option<String>,
+    pub value: Option<String>,
+    pub user_id: Option<i32>,
+    pub engagement_id: Option<i32>,
+}
+
+impl Default for Patch {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            host_id: None,
+            name: None,
+            value: None,
+            user_id: None,
+            engagement_id: None,
+        }
+    }
 }
 
 impl Default for Plugin {

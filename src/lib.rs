@@ -9,3 +9,4 @@ pub mod postprocess;
 pub mod renderer;
 pub mod schema;
 pub mod template;
+pub mod templates;

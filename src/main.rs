@@ -18,6 +18,7 @@ mod postprocess;
 mod renderer;
 mod schema;
 mod template;
+mod templates;
 
 use clap::{Parser, Subcommand};
 use tracing::error;
@@ -122,6 +123,8 @@ fn run() -> Result<(), error::Error> {
                 .collect();
             let mut manager = template::TemplateManager::new(paths);
             manager.register(Box::new(template::SimpleTemplate));
+            manager.register(Box::new(templates::TemplateTemplate));
+            manager.register(Box::new(templates::HostSummaryTemplate));
             manager.load_templates().map_err(error::Error::Template)?;
             let tmpl = manager.get(&tmpl_name).ok_or_else(|| {
                 error::Error::Config(format!(

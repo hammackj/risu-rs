@@ -1,11 +1,13 @@
-//! Utilities for parsing Nessus XML reports into in-memory models.
+//! Utilities for parsing vulnerability scan reports into in-memory models.
+
+mod simple_nexpose;
 
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use quick_xml::Reader;
 use quick_xml::events::Event;
+use quick_xml::Reader;
 use tracing::{debug, info};
 
 use crate::models::{Attachment, Host, Item, Patch, Plugin};
@@ -23,8 +25,24 @@ pub struct NessusReport {
     pub attachments: Vec<Attachment>,
 }
 
-/// Validate and parse a Nessus XML file into ORM models.
+/// Detect file type and parse accordingly.
 pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
+    match path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|s| s.to_lowercase())
+        .as_deref()
+    {
+        Some("csv") => {
+            let report = simple_nexpose::parse_file(path)?;
+            Ok(report.into())
+        }
+        _ => parse_nessus(path),
+    }
+}
+
+/// Validate and parse a Nessus XML file into ORM models.
+fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
     info!("Parsing file: {}", path.display());
 
     let mut reader = Reader::from_file(path)?;
@@ -281,6 +299,15 @@ mod tests {
         let data = std::fs::read(saved).unwrap();
         assert_eq!(data, b"hello");
     }
+
+    #[test]
+    fn routes_csv_to_simple_parser() {
+        let path = std::path::Path::new("tests/fixtures/sample_nexpose.csv");
+        let report = parse_file(path).expect("parse csv");
+        assert_eq!(report.hosts.len(), 2);
+        assert_eq!(report.items.len(), 3);
+        assert_eq!(report.plugins.len(), 2);
+    }
 }
 
 fn empty_host() -> Host {
@@ -332,6 +359,7 @@ fn empty_item() -> Item {
         engagement_id: None,
     }
 }
+
 
 fn empty_plugin() -> Plugin {
     Plugin {

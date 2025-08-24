@@ -64,6 +64,9 @@ enum Commands {
         /// Run post-processing plugins on the parsed data
         #[arg(long)]
         post_process: bool,
+        /// Renderer to use (pdf, csv, nil). Use `nil` to discard output.
+        #[arg(long, value_parser = ["pdf", "csv", "nil"])]
+        renderer: Option<String>,
     },
     /// Index NASL plugins and store metadata
     PluginIndex {
@@ -104,6 +107,7 @@ fn run() -> Result<(), error::Error> {
             template: tmpl_name,
             output,
             post_process,
+            renderer: renderer_opt,
         } => {
             let mut report = parser::parse_file(&file)?;
             if post_process {
@@ -125,15 +129,27 @@ fn run() -> Result<(), error::Error> {
                     manager.available()
                 ))
             })?;
-            let mut f = std::fs::File::create(&output)?;
-            let mut renderer: Box<dyn renderer::Renderer> =
-                match output.extension().and_then(|s| s.to_str()) {
+            let renderer_choice = renderer_opt.clone();
+            let mut renderer: Box<dyn renderer::Renderer> = match renderer_choice.as_deref() {
+                Some("csv") => Box::new(renderer::CsvRenderer::new()),
+                Some("nil") => Box::new(renderer::NilRenderer::new()),
+                Some("pdf") => Box::new(renderer::PdfRenderer::new("Report")),
+                None => match output.extension().and_then(|s| s.to_str()) {
                     Some("csv") => Box::new(renderer::CsvRenderer::new()),
                     _ => Box::new(renderer::PdfRenderer::new("Report")),
-                };
+                },
+                _ => unreachable!(),
+            };
             tmpl.generate(&report, renderer.as_mut())
                 .map_err(error::Error::Template)?;
-            renderer.save(&mut f).map_err(error::Error::Template)?;
+            if renderer_choice.as_deref() != Some("nil") {
+                let mut f = std::fs::File::create(&output)?;
+                renderer.save(&mut f).map_err(error::Error::Template)?;
+            } else {
+                renderer
+                    .save(&mut std::io::sink())
+                    .map_err(error::Error::Template)?;
+            }
         }
         Commands::PluginIndex { dir } => {
             plugin_index::run(&dir)?;

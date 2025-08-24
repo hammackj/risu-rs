@@ -120,10 +120,22 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    nessus_patches (id) {
+        id -> Integer,
+        host_id -> Nullable<Integer>,
+        name -> Nullable<Text>,
+        value -> Nullable<Text>,
+        user_id -> Nullable<Integer>,
+        engagement_id -> Nullable<Integer>,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     nessus_hosts,
     nessus_host_properties,
     nessus_items,
     nessus_plugins,
     nessus_plugin_metadata,
+    nessus_patches,
 );

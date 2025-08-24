@@ -3,6 +3,7 @@
     <HostProperties>
       <tag name="host-ip">192.168.0.1</tag>
       <tag name="operating-system">Linux</tag>
+      <tag name="MS12-001">KB123456</tag>
     </HostProperties>
     <ReportItem pluginID="100" port="0" svc_name="" protocol="tcp" severity="0" pluginName="Test Plugin">
     </ReportItem>

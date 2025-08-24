@@ -6,6 +6,7 @@
 //! risu-rs parse scan.nessus -o out.csv -t simple --post-process
 //! ```
 
+mod banner;
 mod config;
 mod graphs;
 mod migrate;
@@ -21,6 +22,9 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(author, version, about)]
 struct Cli {
+    /// Suppress the startup banner
+    #[arg(long = "no-banner")]
+    _no_banner: bool,
     #[command(subcommand)]
     command: Commands,
 }
@@ -55,7 +59,11 @@ enum Commands {
 }
 
 fn main() {
-    let cli = Cli::parse();
+    let args: Vec<String> = std::env::args().collect();
+    if !args.iter().any(|a| a == "--no-banner") {
+        println!("{}", banner::random());
+    }
+    let cli = Cli::parse_from(args);
 
     match cli.command {
         Commands::CreateConfig => {

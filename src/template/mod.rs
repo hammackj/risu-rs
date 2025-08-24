@@ -23,6 +23,7 @@ pub trait Template {
         &self,
         report: &NessusReport,
         renderer: &mut dyn Renderer,
+        args: &HashMap<String, String>,
     ) -> Result<(), Box<dyn Error>>;
 }
 
@@ -104,7 +105,13 @@ impl Template for SimpleTemplate {
         &self,
         report: &NessusReport,
         renderer: &mut dyn Renderer,
+        args: &HashMap<String, String>,
     ) -> Result<(), Box<dyn Error>> {
+        let title = args
+            .get("title")
+            .map(String::as_str)
+            .unwrap_or("Simple Report");
+        renderer.text(title)?;
         renderer.text(&format!("Hosts: {}", report.hosts.len()))?;
 
         // Generate example graphs in the system temporary directory.

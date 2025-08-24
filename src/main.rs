@@ -24,6 +24,7 @@ mod template;
 mod templates;
 
 use clap::{Parser, Subcommand};
+use std::collections::HashMap;
 use tracing::error;
 
 #[derive(Parser)]
@@ -80,6 +81,9 @@ enum Commands {
         /// Renderer to use (pdf, csv, nil). Use `nil` to discard output.
         #[arg(long, value_parser = ["pdf", "csv", "nil"])]
         renderer: Option<String>,
+        /// Template-specific arguments as `key=value` pairs
+        #[arg(long = "template-arg", value_name = "key=value", value_parser = parse_key_val::<String, String>)]
+        template_args: Vec<(String, String)>,
     },
     /// Index NASL plugins and store metadata
     PluginIndex {
@@ -98,6 +102,21 @@ enum Commands {
         #[arg(long, value_parser = ["pdf", "csv", "nil"])]
         renderer: Option<String>,
     },
+}
+
+fn parse_key_val<T, U>(s: &str) -> Result<(T, U), String>
+where
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
+    U: std::str::FromStr,
+    U::Err: std::fmt::Display,
+{
+    let pos = s
+        .find('=')
+        .ok_or_else(|| format!("invalid KEY=value: no `=` found in `{s}`"))?;
+    let key = s[..pos].parse::<T>().map_err(|e| e.to_string())?;
+    let value = s[pos + 1..].parse::<U>().map_err(|e| e.to_string())?;
+    Ok((key, value))
 }
 
 fn main() {
@@ -162,6 +181,7 @@ fn run() -> Result<(), error::Error> {
             output,
             post_process,
             renderer: renderer_opt,
+            template_args,
         }) => {
             let mut report = parser::parse_file(&file)?;
             if post_process {
@@ -189,17 +209,22 @@ fn run() -> Result<(), error::Error> {
                 ))
             })?;
             let renderer_choice = renderer_opt.clone();
+            let template_args: HashMap<String, String> = template_args.into_iter().collect();
+            let title_arg = template_args
+                .get("title")
+                .cloned()
+                .unwrap_or_else(|| "Report".to_string());
             let mut renderer: Box<dyn renderer::Renderer> = match renderer_choice.as_deref() {
                 Some("csv") => Box::new(renderer::CsvRenderer::new()),
                 Some("nil") => Box::new(renderer::NilRenderer::new()),
-                Some("pdf") => Box::new(renderer::PdfRenderer::new("Report")),
+                Some("pdf") => Box::new(renderer::PdfRenderer::new(&title_arg)),
                 None => match output.extension().and_then(|s| s.to_str()) {
                     Some("csv") => Box::new(renderer::CsvRenderer::new()),
-                    _ => Box::new(renderer::PdfRenderer::new("Report")),
+                    _ => Box::new(renderer::PdfRenderer::new(&title_arg)),
                 },
                 _ => unreachable!(),
             };
-            tmpl.generate(&report, renderer.as_mut())
+            tmpl.generate(&report, renderer.as_mut(), &template_args)
                 .map_err(error::Error::Template)?;
             if renderer_choice.as_deref() != Some("nil") {
                 let mut f = std::fs::File::create(&output)?;

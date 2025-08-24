@@ -8,6 +8,7 @@ A Rust rewrite of the Risu reporting utilities.
 risu-rs create-config              # write default config.yml
 risu-rs migrate --create-tables    # run database migrations
 risu-rs parse scan.nessus -o report.csv -t simple --post-process
+risu-rs parse scan.nessus -o report.pdf -t simple --template-arg title="Custom Title"
 risu-rs --list-templates           # list available templates
 risu-rs --list-post-process        # list post-process plugins
 ```

@@ -16,6 +16,7 @@ mod postprocess;
 mod renderer;
 mod schema;
 mod template;
+mod plugin_index;
 
 use clap::{Parser, Subcommand};
 
@@ -55,6 +56,11 @@ enum Commands {
         /// Run post-processing plugins on the parsed data
         #[arg(long)]
         post_process: bool,
+    },
+    /// Index NASL plugins and store metadata
+    PluginIndex {
+        /// Directory containing NASL plugins
+        dir: std::path::PathBuf,
     },
 }
 
@@ -132,5 +138,10 @@ fn main() {
                 eprintln!("failed to parse file: {e}");
             }
         },
+        Commands::PluginIndex { dir } => {
+            if let Err(e) = plugin_index::run(&dir) {
+                eprintln!("failed to index plugins: {e}");
+            }
+        }
     }
 }

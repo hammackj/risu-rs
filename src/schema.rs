@@ -110,9 +110,20 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    nessus_plugin_metadata (id) {
+        id -> Integer,
+        script_id -> Nullable<Integer>,
+        script_name -> Nullable<Text>,
+        cve -> Nullable<Text>,
+        bid -> Nullable<Text>,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     nessus_hosts,
     nessus_host_properties,
     nessus_items,
     nessus_plugins,
+    nessus_plugin_metadata,
 );

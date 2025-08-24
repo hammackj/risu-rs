@@ -1,10 +1,11 @@
 //! Utilities for parsing Nessus XML reports into in-memory models.
 
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use quick_xml::Reader;
 use quick_xml::events::Event;
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::models::{Host, Item, Plugin};
 
@@ -30,6 +31,11 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
     let mut current_host: Option<Host> = None;
     let mut current_tag: Option<String> = None;
 
+    // Track XML elements or attributes we don't explicitly handle so developers
+    // can spot schema changes.
+    let mut unknown_tags = BTreeSet::new();
+    let mut unknown_attrs = BTreeSet::new();
+
     loop {
         match reader.read_event_into(&mut buf)? {
             Event::Start(e) => match e.name().as_ref() {
@@ -37,6 +43,11 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     for a in e.attributes().flatten() {
                         if a.key.as_ref() == b"version" {
                             report.version = a.unescape_value()?.to_string();
+                        } else {
+                            unknown_attrs.insert(format!(
+                                "NessusClientData_v2 {}",
+                                String::from_utf8_lossy(a.key.as_ref())
+                            ));
                         }
                     }
                 }
@@ -45,6 +56,11 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     for a in e.attributes().flatten() {
                         if a.key.as_ref() == b"name" {
                             host.name = Some(a.unescape_value()?.to_string());
+                        } else {
+                            unknown_attrs.insert(format!(
+                                "ReportHost {}",
+                                String::from_utf8_lossy(a.key.as_ref())
+                            ));
                         }
                     }
                     current_host = Some(host);
@@ -56,6 +72,9 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     for a in e.attributes().flatten() {
                         if a.key.as_ref() == b"name" {
                             current_tag = Some(a.unescape_value()?.to_string());
+                        } else {
+                            unknown_attrs
+                                .insert(format!("tag {}", String::from_utf8_lossy(a.key.as_ref())));
                         }
                     }
                 }
@@ -83,12 +102,19 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                             b"pluginName" => {
                                 item.plugin_name = Some(a.unescape_value()?.to_string());
                             }
-                            _ => {}
+                            _ => {
+                                unknown_attrs.insert(format!(
+                                    "ReportItem {}",
+                                    String::from_utf8_lossy(a.key.as_ref())
+                                ));
+                            }
                         }
                     }
                     report.items.push(item);
                 }
-                _ => {}
+                _ => {
+                    unknown_tags.insert(String::from_utf8_lossy(e.name().as_ref()).to_string());
+                }
             },
             Event::Text(e) => {
                 if let Some(tag) = &current_tag {
@@ -131,6 +157,13 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                 report.plugins.push(plugin);
             }
         }
+    }
+
+    if !unknown_tags.is_empty() {
+        debug!("Unknown XML tags encountered: {:?}", unknown_tags);
+    }
+    if !unknown_attrs.is_empty() {
+        debug!("Unknown XML attributes encountered: {:?}", unknown_attrs);
     }
 
     Ok(report)

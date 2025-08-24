@@ -58,12 +58,25 @@ impl Registry {
             report.plugins.len()
         );
     }
+
+    /// Display all registered plugin names.
+    pub fn display(&self) {
+        for plugin in &self.plugins {
+            println!("{}", plugin.info().name);
+        }
+    }
 }
 
 /// Convenience helper to run all discovered plugins on a report.
 pub fn process(report: &mut NessusReport) {
     let registry = Registry::discover();
     registry.run(report);
+}
+
+/// Display the names of all registered plugins.
+pub fn display() {
+    let registry = Registry::discover();
+    registry.display();
 }
 
 /// List information about all registered plugins.

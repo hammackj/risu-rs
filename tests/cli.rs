@@ -10,7 +10,7 @@ fn create_config_and_parse() {
     // create config
     Command::cargo_bin("risu-rs")
         .unwrap()
-        .arg("create-config")
+        .args(["--no-banner", "create-config"])
         .current_dir(&tmp)
         .assert()
         .success();
@@ -22,6 +22,7 @@ fn create_config_and_parse() {
         .unwrap()
         .current_dir(&tmp)
         .args([
+            "--no-banner",
             "parse",
             sample.to_str().unwrap(),
             "-o",

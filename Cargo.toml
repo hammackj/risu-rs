@@ -11,3 +11,5 @@ chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
 quick-xml = "0.31"
+libloading = "0.7"
+printpdf = "0.5"

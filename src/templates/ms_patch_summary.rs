@@ -17,7 +17,7 @@ impl Template for MSPatchSummaryTemplate {
         report: &NessusReport,
         renderer: &mut dyn Renderer,
     ) -> Result<(), Box<dyn Error>> {
-        renderer.text("Missing Microsoft Patch Summary")?;
+        renderer.heading(1, "Missing Microsoft Patch Summary")?;
         for patch in &report.patches {
             if let Some(host_id) = patch.host_id {
                 if let Some(host) = report.hosts.get(host_id as usize) {

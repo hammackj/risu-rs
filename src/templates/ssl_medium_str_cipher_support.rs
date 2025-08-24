@@ -17,7 +17,7 @@ impl Template for SslMediumStrCipherSupportTemplate {
         report: &NessusReport,
         renderer: &mut dyn Renderer,
     ) -> Result<(), Box<dyn Error>> {
-        renderer.text("SSL Medium Strength Cipher Support")?;
+        renderer.heading(1, "SSL Medium Strength Cipher Support")?;
         let mut count = 0;
         for item in &report.items {
             if let Some(name) = &item.plugin_name {

@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 
-use base64::{engine::general_purpose, Engine};
+use base64::{Engine, engine::general_purpose};
 use diesel::sqlite::SqliteConnection;
 
 use crate::graphs::{TopVulnGraph, WindowsOsGraph};

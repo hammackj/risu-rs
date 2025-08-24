@@ -17,7 +17,7 @@ impl Template for PCIComplianceTemplate {
         report: &NessusReport,
         renderer: &mut dyn Renderer,
     ) -> Result<(), Box<dyn Error>> {
-        renderer.text("PCI / DSS Compliance Overview")?;
+        renderer.heading(1, "PCI / DSS Compliance Overview")?;
         renderer.text(&format!("Total Hosts: {}", report.hosts.len()))?;
 
         // Naively look for plugin 33929 and classify output containing

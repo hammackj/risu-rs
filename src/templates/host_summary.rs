@@ -17,7 +17,7 @@ impl Template for HostSummaryTemplate {
         report: &NessusReport,
         renderer: &mut dyn Renderer,
     ) -> Result<(), Box<dyn Error>> {
-        renderer.text("Host Summary Report")?;
+        renderer.heading(1, "Host Summary Report")?;
         renderer.text(&format!("Total Hosts: {}", report.hosts.len()))?;
         for host in &report.hosts {
             let name = host.name.as_deref().unwrap_or("unknown");

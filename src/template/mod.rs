@@ -105,6 +105,7 @@ impl Template for SimpleTemplate {
         report: &NessusReport,
         renderer: &mut dyn Renderer,
     ) -> Result<(), Box<dyn Error>> {
+        renderer.heading(1, "Simple Template Report")?;
         renderer.text(&format!("Hosts: {}", report.hosts.len()))?;
 
         // Generate example graphs in the system temporary directory.

@@ -17,7 +17,7 @@ impl Template for StigFindingsSummaryTemplate {
         report: &NessusReport,
         renderer: &mut dyn Renderer,
     ) -> Result<(), Box<dyn Error>> {
-        renderer.text("STIG Findings Summary")?;
+        renderer.heading(1, "STIG Findings Summary")?;
 
         // Summarize counts by severity level.
         let mut counts = [0usize; 5];

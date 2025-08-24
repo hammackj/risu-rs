@@ -18,7 +18,7 @@ impl Template for TemplateTemplate {
         _report: &NessusReport,
         renderer: &mut dyn Renderer,
     ) -> Result<(), Box<dyn Error>> {
-        renderer.text("Template")?;
+        renderer.heading(1, "Template")?;
         // Demonstrate embedding an image from the bundled assets directory.
         // The image bytes are included in the binary and encoded as a data URI
         // for renderers that accept inline images.

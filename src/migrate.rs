@@ -1,32 +1,33 @@
+use diesel::migration::MigrationSource;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use diesel::migration::MigrationSource;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
+use tracing::info;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 /// Perform database migrations
-pub fn run(create_tables: bool, drop_tables: bool) {
+pub fn run(create_tables: bool, drop_tables: bool) -> Result<(), crate::error::Error> {
     let database_url = "risu.db";
-    let mut conn = SqliteConnection::establish(database_url)
-        .expect("Failed to connect to database");
+    let mut conn = SqliteConnection::establish(database_url)?;
 
     if create_tables {
         conn.run_pending_migrations(MIGRATIONS)
-            .expect("Failed to run migrations");
+            .map_err(crate::error::Error::Migration)?;
     }
 
     if drop_tables {
-        if let Ok(migs) = MIGRATIONS.migrations() {
-            for migration in migs.iter().rev() {
-                conn.revert_migration(migration)
-                    .expect("Failed to revert migration");
-            }
+        let migs = MIGRATIONS
+            .migrations()
+            .map_err(crate::error::Error::Migration)?;
+        for migration in migs.iter().rev() {
+            conn.revert_migration(migration)
+                .map_err(crate::error::Error::Migration)?;
         }
     }
 
     if !create_tables && !drop_tables {
-        println!("No migration action specified");
+        info!("No migration action specified");
     }
+    Ok(())
 }
-

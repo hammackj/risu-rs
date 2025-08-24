@@ -5,6 +5,7 @@
 //! parsing to adjust or enrich data.
 
 use crate::parser::NessusReport;
+use tracing::info;
 
 /// Information about a post-processing plugin.
 pub struct PostProcessInfo {
@@ -46,10 +47,10 @@ impl Registry {
     /// Run all plugins in order.
     pub fn run(&self, report: &mut NessusReport) {
         for plugin in &self.plugins {
-            println!("Running post-process plugin: {}", plugin.info().name);
+            info!("Running post-process plugin: {}", plugin.info().name);
             plugin.run(report);
         }
-        println!(
+        info!(
             "Post-processed report v{} ({} hosts, {} items, {} plugins)",
             report.version,
             report.hosts.len(),

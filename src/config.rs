@@ -21,6 +21,9 @@ pub struct Config {
     /// Logging level used by the application.
     #[serde(default = "default_log_level")]
     pub log_level: String,
+    /// Log output format (plain or json).
+    #[serde(default = "default_log_format")]
+    pub log_format: String,
     /// Paths to search for compiled template modules.
     #[serde(default = "default_template_paths")]
     pub template_paths: Vec<String>,
@@ -31,6 +34,7 @@ impl Default for Config {
         Self {
             database_url: default_database_url(),
             log_level: default_log_level(),
+            log_format: default_log_format(),
             template_paths: default_template_paths(),
         }
     }
@@ -44,20 +48,25 @@ fn default_log_level() -> String {
     "info".to_string()
 }
 
+fn default_log_format() -> String {
+    "plain".to_string()
+}
+
 fn default_template_paths() -> Vec<String> {
     vec!["./templates".to_string()]
 }
 
 /// Write a configuration file containing default values to the given path.
-pub fn create_config(path: &Path) -> std::io::Result<()> {
+pub fn create_config(path: &Path) -> Result<(), crate::error::Error> {
     let cfg = Config::default();
-    let yaml = serde_yaml::to_string(&cfg).expect("serialize default config");
-    fs::write(path, yaml)
+    let yaml = serde_yaml::to_string(&cfg)?;
+    fs::write(path, yaml)?;
+    Ok(())
 }
 
 /// Load configuration from the given path, falling back to defaults when
 /// values are missing or empty.
-pub fn load_config(path: &Path) -> Result<Config, Box<dyn std::error::Error>> {
+pub fn load_config(path: &Path) -> Result<Config, crate::error::Error> {
     let raw = fs::read_to_string(path)?;
     let mut cfg: Config = serde_yaml::from_str(&raw).unwrap_or_default();
 
@@ -69,6 +78,9 @@ pub fn load_config(path: &Path) -> Result<Config, Box<dyn std::error::Error>> {
     }
     if cfg.template_paths.is_empty() {
         cfg.template_paths = default_template_paths();
+    }
+    if cfg.log_format.trim().is_empty() {
+        cfg.log_format = default_log_format();
     }
 
     Ok(cfg)

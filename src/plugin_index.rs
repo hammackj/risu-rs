@@ -6,6 +6,7 @@ use walkdir::WalkDir;
 
 use crate::migrate::MIGRATIONS;
 use crate::schema::nessus_plugin_metadata;
+use tracing::info;
 
 #[derive(Insertable)]
 #[diesel(table_name = nessus_plugin_metadata)]
@@ -16,18 +17,20 @@ struct NewPluginMetadata<'a> {
     bid: Option<&'a str>,
 }
 
-pub fn run(dir: &std::path::Path) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub fn run(dir: &std::path::Path) -> Result<(), crate::error::Error> {
     let database_url = "risu.db";
     let mut conn = SqliteConnection::establish(database_url)?;
-    conn.run_pending_migrations(MIGRATIONS)?;
+    conn.run_pending_migrations(MIGRATIONS)
+        .map_err(crate::error::Error::Migration)?;
 
     // clear existing entries
     diesel::delete(nessus_plugin_metadata::table).execute(&mut conn)?;
 
     let re_id = Regex::new(r"(?m)script_id\s*\(\s*([0-9]+)\s*\)")?;
     let re_name = Regex::new(r#"(?m)script_name\s*\(\s*\"([^\"]+)\""#)?;
-    let re_xref =
-        Regex::new(r#"(?m)script_xref\s*\(\s*name\s*:\s*\"([^\"]+)\"\s*,\s*value\s*:\s*\"([^\"]+)\""#)?;
+    let re_xref = Regex::new(
+        r#"(?m)script_xref\s*\(\s*name\s*:\s*\"([^\"]+)\"\s*,\s*value\s*:\s*\"([^\"]+)\""#,
+    )?;
 
     let mut processed = 0;
     let mut inserted = 0;
@@ -82,11 +85,11 @@ pub fn run(dir: &std::path::Path) -> Result<(), Box<dyn std::error::Error + Send
                 .values(&new_md)
                 .execute(&mut conn)?;
             inserted += 1;
-            println!("Indexed plugin {} ({})", script_id, script_name);
+            info!("Indexed plugin {} ({})", script_id, script_name);
         }
     }
 
-    println!(
+    info!(
         "Processed {} plugin files, inserted {} records",
         processed, inserted
     );

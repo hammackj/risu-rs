@@ -1,5 +1,6 @@
 pub mod banner;
 pub mod config;
+pub mod error;
 pub mod graphs;
 pub mod migrate;
 pub mod models;

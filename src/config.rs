@@ -10,6 +10,9 @@ pub struct Config {
     /// Logging level used by the application.
     #[serde(default = "default_log_level")]
     pub log_level: String,
+    /// Paths to search for compiled template modules.
+    #[serde(default = "default_template_paths")]
+    pub template_paths: Vec<String>,
 }
 
 impl Default for Config {
@@ -17,6 +20,7 @@ impl Default for Config {
         Self {
             database_url: default_database_url(),
             log_level: default_log_level(),
+            template_paths: default_template_paths(),
         }
     }
 }
@@ -27,6 +31,10 @@ fn default_database_url() -> String {
 
 fn default_log_level() -> String {
     "info".to_string()
+}
+
+fn default_template_paths() -> Vec<String> {
+    vec!["./templates".to_string()]
 }
 
 /// Write a configuration file containing default values to the given path.
@@ -47,6 +55,9 @@ pub fn load_config(path: &Path) -> Result<Config, Box<dyn std::error::Error>> {
     }
     if cfg.log_level.trim().is_empty() {
         cfg.log_level = default_log_level();
+    }
+    if cfg.template_paths.is_empty() {
+        cfg.template_paths = default_template_paths();
     }
 
     Ok(cfg)

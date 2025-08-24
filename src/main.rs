@@ -4,6 +4,7 @@ mod parser;
 mod postprocess;
 mod schema;
 mod models;
+mod template;
 
 use clap::{Parser, Subcommand};
 
@@ -31,6 +32,12 @@ enum Commands {
     Parse {
         /// File to parse
         file: std::path::PathBuf,
+        /// Template to use for rendering
+        #[arg(short, long, default_value = "simple")]
+        template: String,
+        /// Output file for generated document
+        #[arg(short, long, default_value = "output.pdf")]
+        output: std::path::PathBuf,
     },
 }
 
@@ -50,10 +57,40 @@ fn main() {
         } => {
             migrate::run(create_tables, drop_tables);
         }
-        Commands::Parse { file } => {
+        Commands::Parse { file, template: tmpl_name, output } => {
             match parser::parse_file(&file) {
                 Ok(mut report) => {
                     postprocess::process(&mut report);
+
+                    let cfg = config::load_config(std::path::Path::new("config.yml"))
+                        .unwrap_or_default();
+                    let paths = cfg.template_paths.iter().map(std::path::PathBuf::from).collect();
+                    let mut manager = template::TemplateManager::new(paths);
+                    manager.register(Box::new(template::SimpleTemplate));
+                    if let Err(e) = manager.load_templates() {
+                        eprintln!("failed to load templates: {e}");
+                    }
+                    match manager.get(&tmpl_name) {
+                        Some(tmpl) => {
+                            match std::fs::File::create(&output) {
+                                Ok(mut f) => {
+                                    if let Err(e) = tmpl.generate(&report, &mut f) {
+                                        eprintln!("failed to generate output: {e}");
+                                    }
+                                }
+                                Err(e) => {
+                                    eprintln!("failed to open output file: {e}");
+                                }
+                            }
+                        }
+                        None => {
+                            eprintln!(
+                                "unknown template '{}'\. available: {:?}",
+                                tmpl_name,
+                                manager.available()
+                            );
+                        }
+                    }
                 }
                 Err(e) => {
                     eprintln!("failed to parse file: {e}");

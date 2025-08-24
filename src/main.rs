@@ -35,8 +35,11 @@ struct Cli {
     /// Log output format (plain or json)
     #[arg(long, value_parser = ["plain", "json"], default_value = "plain")]
     log_format: String,
+    /// List available post-processing plugins
+    #[arg(long = "list-post-process")]
+    list_post_process: bool,
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -92,24 +95,31 @@ fn run() -> Result<(), error::Error> {
 
     init_logging(&cli.log_level, &cli.log_format);
 
+    if cli.list_post_process {
+        for info in postprocess::list() {
+            println!("{}", info.name);
+        }
+        return Ok(());
+    }
+
     match cli.command {
-        Commands::CreateConfig => {
+        Some(Commands::CreateConfig) => {
             let path = std::path::Path::new("config.yml");
             config::create_config(path)?;
         }
-        Commands::Migrate {
+        Some(Commands::Migrate {
             create_tables,
             drop_tables,
-        } => {
+        }) => {
             migrate::run(create_tables, drop_tables)?;
         }
-        Commands::Parse {
+        Some(Commands::Parse {
             file,
             template: tmpl_name,
             output,
             post_process,
             renderer: renderer_opt,
-        } => {
+        }) => {
             let mut report = parser::parse_file(&file)?;
             if post_process {
                 postprocess::process(&mut report);
@@ -154,9 +164,10 @@ fn run() -> Result<(), error::Error> {
                     .map_err(error::Error::Template)?;
             }
         }
-        Commands::PluginIndex { dir } => {
+        Some(Commands::PluginIndex { dir }) => {
             plugin_index::run(&dir)?;
         }
+        None => {}
     }
     Ok(())
 }

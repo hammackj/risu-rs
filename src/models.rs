@@ -1,10 +1,14 @@
+//! Database models representing parsed Nessus data.
+//!
+//! The models map directly to tables created by Diesel migrations and are used
+//! by the parser and CLI. Only a subset of the original Ruby models are
+//! implemented at the moment.
+
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::net::IpAddr;
 
-use crate::schema::{
-    nessus_hosts, nessus_items, nessus_plugins,
-};
+use crate::schema::{nessus_hosts, nessus_items, nessus_plugins};
 
 #[derive(Debug, Queryable, Identifiable)]
 #[diesel(table_name = nessus_hosts)]
@@ -131,5 +135,46 @@ impl Host {
             .filter_map(|h| h.ip)
             .collect::<Vec<_>>()
             .join("\n"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::migrate::MIGRATIONS;
+    use crate::schema::nessus_hosts;
+    use diesel::prelude::*;
+    use diesel::sqlite::SqliteConnection;
+    use diesel_migrations::MigrationHarness;
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_hosts)]
+    struct NewHost<'a> {
+        ip: Option<&'a str>,
+    }
+
+    fn setup() -> SqliteConnection {
+        let mut conn = SqliteConnection::establish(":memory:").unwrap();
+        conn.run_pending_migrations(MIGRATIONS).unwrap();
+        conn
+    }
+
+    #[test]
+    fn ip_list_returns_sorted_addresses() {
+        let mut conn = setup();
+        diesel::insert_into(nessus_hosts::table)
+            .values(&[
+                NewHost {
+                    ip: Some("10.0.0.2"),
+                },
+                NewHost {
+                    ip: Some("10.0.0.1"),
+                },
+            ])
+            .execute(&mut conn)
+            .unwrap();
+
+        let list = Host::ip_list(&mut conn).unwrap();
+        assert_eq!(list, "10.0.0.1\n10.0.0.2");
     }
 }

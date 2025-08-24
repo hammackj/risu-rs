@@ -1,3 +1,9 @@
+//! Framework for post-processing plugins applied to parsed reports.
+//!
+//! Plugins implement [`PostProcess`] and register themselves using the
+//! [`inventory`] crate. They run sequentially on the [`NessusReport`] after
+//! parsing to adjust or enrich data.
+
 use crate::parser::NessusReport;
 
 /// Information about a post-processing plugin.
@@ -29,8 +35,10 @@ pub struct Registry {
 impl Registry {
     /// Discover all statically registered plugins and order them.
     pub fn discover() -> Self {
-        let mut plugins: Vec<&'static dyn PostProcess> =
-            inventory::iter::<PluginEntry>.into_iter().map(|e| e.plugin).collect();
+        let mut plugins: Vec<&'static dyn PostProcess> = inventory::iter::<PluginEntry>
+            .into_iter()
+            .map(|e| e.plugin)
+            .collect();
         plugins.sort_by_key(|p| p.info().order);
         Self { plugins }
     }

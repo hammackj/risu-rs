@@ -1,0 +1,10 @@
+<NessusClientData_v2 version="2.0">
+  <ReportHost name="192.168.0.1">
+    <HostProperties>
+      <tag name="host-ip">192.168.0.1</tag>
+      <tag name="operating-system">Linux</tag>
+    </HostProperties>
+    <ReportItem pluginID="100" port="0" svc_name="" protocol="tcp" severity="0" pluginName="Test Plugin">
+    </ReportItem>
+  </ReportHost>
+</NessusClientData_v2>

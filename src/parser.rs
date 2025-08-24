@@ -1,7 +1,9 @@
+//! Utilities for parsing Nessus XML reports into in-memory models.
+
 use std::path::Path;
 
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 
 use crate::models::{Host, Item, Plugin};
 
@@ -61,16 +63,11 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, Box<dyn std::error::Error
                     for a in e.attributes().flatten() {
                         match a.key.as_ref() {
                             b"pluginID" => {
-                                item.plugin_id = a
-                                    .unescape_value()
-                                    .ok()
-                                    .and_then(|v| v.parse().ok());
+                                item.plugin_id =
+                                    a.unescape_value().ok().and_then(|v| v.parse().ok());
                             }
                             b"port" => {
-                                item.port = a
-                                    .unescape_value()
-                                    .ok()
-                                    .and_then(|v| v.parse().ok());
+                                item.port = a.unescape_value().ok().and_then(|v| v.parse().ok());
                             }
                             b"svc_name" => {
                                 item.svc_name = Some(a.unescape_value()?.to_string());
@@ -79,10 +76,8 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, Box<dyn std::error::Error
                                 item.protocol = Some(a.unescape_value()?.to_string());
                             }
                             b"severity" => {
-                                item.severity = a
-                                    .unescape_value()
-                                    .ok()
-                                    .and_then(|v| v.parse().ok());
+                                item.severity =
+                                    a.unescape_value().ok().and_then(|v| v.parse().ok());
                             }
                             b"pluginName" => {
                                 item.plugin_name = Some(a.unescape_value()?.to_string());
@@ -138,6 +133,21 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, Box<dyn std::error::Error
     }
 
     Ok(report)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_minimal_report() {
+        let path = std::path::Path::new("tests/fixtures/sample.nessus");
+        let report = parse_file(path).expect("parse sample");
+        assert_eq!(report.version, "2.0");
+        assert_eq!(report.hosts.len(), 1);
+        assert_eq!(report.hosts[0].ip.as_deref(), Some("192.168.0.1"));
+        assert_eq!(report.plugins.len(), 1);
+    }
 }
 
 fn empty_host() -> Host {
@@ -240,5 +250,3 @@ fn empty_plugin() -> Plugin {
         policy_id: None,
     }
 }
-
-

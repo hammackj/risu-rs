@@ -1,4 +1,13 @@
+//! Command-line interface for `risu-rs`.
+//!
+//! ```text
+//! risu-rs create-config              # write default config.yml
+//! risu-rs migrate --create-tables    # run database migrations
+//! risu-rs parse scan.nessus -o out.csv -t simple --post-process
+//! ```
+
 mod config;
+mod graphs;
 mod migrate;
 mod models;
 mod parser;
@@ -6,7 +15,6 @@ mod postprocess;
 mod renderer;
 mod schema;
 mod template;
-mod graphs;
 
 use clap::{Parser, Subcommand};
 

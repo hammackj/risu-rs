@@ -69,3 +69,25 @@ fn parse_with_nil_renderer_creates_no_file() {
         .success();
     assert!(!output.exists());
 }
+
+#[test]
+fn create_template_writes_skeleton() {
+    let tmp = tempdir().unwrap();
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .current_dir(&tmp)
+        .args([
+            "--no-banner",
+            "create-template",
+            "--name",
+            "example",
+            "--author",
+            "Alice",
+            "--renderer",
+            "pdf",
+        ])
+        .assert()
+        .success();
+    let path = tmp.path().join("templates").join("example.rs");
+    assert!(path.exists());
+}

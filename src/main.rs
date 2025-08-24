@@ -81,6 +81,18 @@ enum Commands {
         /// Directory containing NASL plugins
         dir: std::path::PathBuf,
     },
+    /// Create a new template skeleton source file
+    CreateTemplate {
+        /// Template name
+        #[arg(long)]
+        name: Option<String>,
+        /// Template author
+        #[arg(long)]
+        author: Option<String>,
+        /// Renderer type (pdf, csv, nil)
+        #[arg(long, value_parser = ["pdf", "csv", "nil"])]
+        renderer: Option<String>,
+    },
 }
 
 fn main() {
@@ -175,6 +187,25 @@ fn run() -> Result<(), error::Error> {
         }
         Some(Commands::PluginIndex { dir }) => {
             plugin_index::run(&dir)?;
+        }
+        Some(Commands::CreateTemplate {
+            name,
+            author,
+            renderer,
+        }) => {
+            let name = match name {
+                Some(n) => n,
+                None => template::create::prompt("Template name")?,
+            };
+            let author = match author {
+                Some(a) => a,
+                None => template::create::prompt("Author")?,
+            };
+            let renderer = match renderer {
+                Some(r) => r,
+                None => template::create::prompt("Renderer type (pdf, csv, nil)")?,
+            };
+            template::create::scaffold(&name, &author, &renderer)?;
         }
         None => {}
     }

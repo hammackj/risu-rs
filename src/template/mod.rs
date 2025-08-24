@@ -11,6 +11,7 @@ use libloading::{Library, Symbol};
 
 use crate::{graphs, parser::NessusReport, renderer::Renderer};
 
+pub mod create;
 pub mod helpers;
 
 /// Trait implemented by report templates.

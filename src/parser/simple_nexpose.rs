@@ -74,6 +74,7 @@ impl From<SimpleNexpose> for super::NessusReport {
             plugins: s.plugins,
             patches: Vec::new(),
             attachments: Vec::new(),
+            host_properties: Vec::new(),
         }
     }
 }

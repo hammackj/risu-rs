@@ -2,11 +2,12 @@ use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 
-use base64::{engine::general_purpose, Engine};
+use base64::{Engine, engine::general_purpose};
+use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 
 use crate::graphs::{TopVulnGraph, WindowsOsGraph};
-use crate::models::Attachment;
+use crate::models::{Attachment, HostProperty};
 
 /// Produce a message indicating the operating system is unsupported.
 pub fn unsupported_os(os: &str) -> String {
@@ -62,6 +63,32 @@ pub fn attachment_path(att: &Attachment) -> Option<&str> {
     att.path.as_deref()
 }
 
+/// Fetch a host property by name for a given host.
+pub fn host_property(
+    conn: &mut SqliteConnection,
+    host_id_val: i32,
+    prop_name: &str,
+) -> QueryResult<Option<String>> {
+    use crate::schema::nessus_host_properties::dsl::*;
+    nessus_host_properties
+        .filter(host_id.eq(host_id_val).and(name.eq(prop_name)))
+        .select(value)
+        .first::<Option<String>>(conn)
+        .optional()
+        .map(|res| res.flatten())
+}
+
+/// Retrieve all properties for a host.
+pub fn host_properties(
+    conn: &mut SqliteConnection,
+    host_id_val: i32,
+) -> QueryResult<Vec<HostProperty>> {
+    use crate::schema::nessus_host_properties::dsl::*;
+    nessus_host_properties
+        .filter(host_id.eq(host_id_val))
+        .load::<HostProperty>(conn)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -101,7 +128,59 @@ mod tests {
         let data = embed_attachment(&att).unwrap();
         assert!(data.starts_with("data:text/plain;base64,"));
         let expected = general_purpose::STANDARD.encode(b"hi");
-        assert_eq!(data["data:text/plain;base64,".len()..].to_string(), expected);
+        assert_eq!(
+            data["data:text/plain;base64,".len()..].to_string(),
+            expected
+        );
         assert_eq!(attachment_path(&att), att.path.as_deref());
+    }
+
+    use crate::migrate::MIGRATIONS;
+    use crate::schema::{nessus_host_properties, nessus_hosts};
+    use diesel::sqlite::SqliteConnection;
+    use diesel_migrations::MigrationHarness;
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_hosts)]
+    struct NewHost<'a> {
+        ip: Option<&'a str>,
+    }
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_host_properties)]
+    struct NewHostProperty<'a> {
+        host_id: Option<i32>,
+        name: Option<&'a str>,
+        value: Option<&'a str>,
+    }
+
+    fn setup() -> SqliteConnection {
+        let mut conn = SqliteConnection::establish(":memory:").unwrap();
+        conn.run_pending_migrations(MIGRATIONS).unwrap();
+        conn
+    }
+
+    #[test]
+    fn host_property_queries() {
+        let mut conn = setup();
+        diesel::insert_into(nessus_hosts::table)
+            .values(&NewHost {
+                ip: Some("10.0.0.1"),
+            })
+            .execute(&mut conn)
+            .unwrap();
+        diesel::insert_into(nessus_host_properties::table)
+            .values(&NewHostProperty {
+                host_id: Some(1),
+                name: Some("foo"),
+                value: Some("bar"),
+            })
+            .execute(&mut conn)
+            .unwrap();
+        let val = host_property(&mut conn, 1, "foo").unwrap();
+        assert_eq!(val.as_deref(), Some("bar"));
+        let props = host_properties(&mut conn, 1).unwrap();
+        assert_eq!(props.len(), 1);
+        assert_eq!(props[0].name.as_deref(), Some("foo"));
     }
 }

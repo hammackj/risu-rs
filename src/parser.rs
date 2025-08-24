@@ -6,12 +6,12 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 use tracing::{debug, info};
 
-use crate::models::{Attachment, Host, Item, Patch, Plugin};
-use base64::{engine::general_purpose, Engine};
+use crate::models::{Attachment, Host, HostProperty, Item, Patch, Plugin};
+use base64::{Engine, engine::general_purpose};
 use regex::Regex;
 
 /// Parsed representation of a Nessus report.
@@ -23,6 +23,7 @@ pub struct NessusReport {
     pub plugins: Vec<Plugin>,
     pub patches: Vec<Patch>,
     pub attachments: Vec<Attachment>,
+    pub host_properties: Vec<HostProperty>,
 }
 
 /// Detect file type and parse accordingly.
@@ -54,6 +55,7 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
     let mut current_host: Option<Host> = None;
     let mut current_tag: Option<String> = None;
     let mut current_patches: Vec<Patch> = Vec::new();
+    let mut current_host_properties: Vec<HostProperty> = Vec::new();
     let base_dir: PathBuf = path.parent().unwrap_or(Path::new(".")).to_path_buf();
 
     struct PendingAttachment {
@@ -100,6 +102,7 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     }
                     current_host = Some(host);
                     current_patches.clear();
+                    current_host_properties.clear();
                 }
                 b"HostProperties" => {
                     // nothing to do, tags will follow
@@ -177,23 +180,27 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                 if let Some(att) = &mut current_attachment {
                     att.data.push_str(&e.unescape()?.into_owned());
                 } else if let Some(tag) = &current_tag {
+                    let val = e.unescape()?.into_owned();
                     if let Some(host) = &mut current_host {
-                        let val = e.unescape()?.into_owned();
                         if patch_re.is_match(tag) {
                             let mut patch = empty_patch();
                             patch.name = Some(tag.clone());
-                            patch.value = Some(val);
+                            patch.value = Some(val.clone());
                             current_patches.push(patch);
                         } else {
                             match tag.as_str() {
-                                "host-ip" => host.ip = Some(val),
-                                "host-fqdn" => host.fqdn = Some(val),
-                                "netbios-name" => host.netbios = Some(val),
-                                "operating-system" => host.os = Some(val),
+                                "host-ip" => host.ip = Some(val.clone()),
+                                "host-fqdn" => host.fqdn = Some(val.clone()),
+                                "netbios-name" => host.netbios = Some(val.clone()),
+                                "operating-system" => host.os = Some(val.clone()),
                                 _ => {}
                             }
                         }
                     }
+                    let mut prop = empty_host_property();
+                    prop.name = Some(tag.clone());
+                    prop.value = Some(val);
+                    current_host_properties.push(prop);
                 }
             }
             Event::End(e) => match e.name().as_ref() {
@@ -207,6 +214,10 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         for mut patch in current_patches.drain(..) {
                             patch.host_id = Some(host_index);
                             report.patches.push(patch);
+                        }
+                        for mut prop in current_host_properties.drain(..) {
+                            prop.host_id = Some(host_index);
+                            report.host_properties.push(prop);
                         }
                     }
                 }
@@ -274,6 +285,24 @@ mod tests {
         assert_eq!(report.patches.len(), 1);
         assert_eq!(report.patches[0].name.as_deref(), Some("MS12-001"));
         assert_eq!(report.patches[0].value.as_deref(), Some("KB123456"));
+        assert_eq!(report.host_properties.len(), 3);
+        assert!(
+            report
+                .host_properties
+                .iter()
+                .any(|p| p.name.as_deref() == Some("host-ip")
+                    && p.value.as_deref() == Some("192.168.0.1"))
+        );
+        assert!(
+            report
+                .host_properties
+                .iter()
+                .any(|p| p.name.as_deref() == Some("operating-system")
+                    && p.value.as_deref() == Some("Linux"))
+        );
+        assert!(report.host_properties.iter().any(
+            |p| p.name.as_deref() == Some("MS12-001") && p.value.as_deref() == Some("KB123456")
+        ));
     }
 
     #[test]
@@ -360,7 +389,6 @@ fn empty_item() -> Item {
     }
 }
 
-
 fn empty_plugin() -> Plugin {
     Plugin {
         id: 0,
@@ -414,6 +442,17 @@ fn empty_plugin() -> Plugin {
 
 fn empty_patch() -> Patch {
     Patch {
+        id: 0,
+        host_id: None,
+        name: None,
+        value: None,
+        user_id: None,
+        engagement_id: None,
+    }
+}
+
+fn empty_host_property() -> HostProperty {
+    HostProperty {
         id: 0,
         host_id: None,
         name: None,

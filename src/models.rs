@@ -5,8 +5,10 @@
 //! implemented at the moment.
 
 pub mod attachment;
+pub mod host_property;
 
 pub use attachment::Attachment;
+pub use host_property::HostProperty;
 
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;

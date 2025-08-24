@@ -1,5 +1,11 @@
 use std::error::Error;
+use std::fs;
+use std::path::PathBuf;
+
 use base64::{engine::general_purpose, Engine};
+use diesel::sqlite::SqliteConnection;
+
+use crate::graphs::{TopVulnGraph, WindowsOsGraph};
 
 /// Produce a message indicating the operating system is unsupported.
 pub fn unsupported_os(os: &str) -> String {
@@ -17,6 +23,22 @@ pub fn heading2(text: &str) -> String {
 pub fn embed_graph(bytes: &[u8]) -> Result<String, Box<dyn Error>> {
     let encoded = general_purpose::STANDARD.encode(bytes);
     Ok(format!("data:image/png;base64,{encoded}"))
+}
+
+/// Generate the top vulnerabilities graph and return it as a data URI.
+pub fn top_vuln_graph(conn: &mut SqliteConnection) -> Result<String, Box<dyn Error>> {
+    let dir: PathBuf = std::env::temp_dir();
+    let path = TopVulnGraph::generate(conn, &dir, 10)?;
+    let bytes = fs::read(path)?;
+    embed_graph(&bytes)
+}
+
+/// Generate the Windows OS distribution graph and return it as a data URI.
+pub fn windows_os_graph(conn: &mut SqliteConnection) -> Result<String, Box<dyn Error>> {
+    let dir: PathBuf = std::env::temp_dir();
+    let path = WindowsOsGraph::generate(conn, &dir)?;
+    let bytes = fs::read(path)?;
+    embed_graph(&bytes)
 }
 
 #[cfg(test)]

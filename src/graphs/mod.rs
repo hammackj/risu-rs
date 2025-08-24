@@ -6,6 +6,12 @@ use plotters::prelude::*;
 
 use crate::parser::NessusReport;
 
+pub mod top_vuln;
+pub mod windows_os;
+
+pub use top_vuln::TopVulnGraph;
+pub use windows_os::WindowsOsGraph;
+
 /// Generate a pie chart showing operating system distribution among hosts.
 /// Returns the path to the generated PNG file.
 pub fn os_distribution(report: &NessusReport, dir: &Path) -> Result<PathBuf, Box<dyn Error>> {

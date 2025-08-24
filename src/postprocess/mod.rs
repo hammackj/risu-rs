@@ -66,5 +66,18 @@ pub fn process(report: &mut NessusReport) {
     registry.run(report);
 }
 
+/// List information about all registered plugins.
+pub fn list() -> Vec<PostProcessInfo> {
+    let mut infos: Vec<PostProcessInfo> = inventory::iter::<PluginEntry>
+        .into_iter()
+        .map(|e| e.plugin.info())
+        .collect();
+    infos.sort_by_key(|i| i.order);
+    infos
+}
+
 mod fix_ips;
+mod normalize_plugin_names;
+mod risk_score;
+mod root_cause;
 mod sort_hosts;

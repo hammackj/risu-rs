@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::error::Error;
 
 use crate::parser::NessusReport;
@@ -16,8 +17,13 @@ impl Template for SslMediumStrCipherSupportTemplate {
         &self,
         report: &NessusReport,
         renderer: &mut dyn Renderer,
+        args: &HashMap<String, String>,
     ) -> Result<(), Box<dyn Error>> {
-        renderer.text("SSL Medium Strength Cipher Support")?;
+        let title = args
+            .get("title")
+            .map(String::as_str)
+            .unwrap_or("SSL Medium Strength Cipher Support");
+        renderer.text(title)?;
         let mut count = 0;
         for item in &report.items {
             if let Some(name) = &item.plugin_name {

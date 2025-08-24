@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::error::Error;
 
 use crate::parser::NessusReport;
@@ -16,8 +17,13 @@ impl Template for StigFindingsSummaryTemplate {
         &self,
         report: &NessusReport,
         renderer: &mut dyn Renderer,
+        args: &HashMap<String, String>,
     ) -> Result<(), Box<dyn Error>> {
-        renderer.text("STIG Findings Summary")?;
+        let title = args
+            .get("title")
+            .map(String::as_str)
+            .unwrap_or("STIG Findings Summary");
+        renderer.text(title)?;
 
         // Summarize counts by severity level.
         let mut counts = [0usize; 5];

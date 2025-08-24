@@ -91,3 +91,39 @@ fn create_template_writes_skeleton() {
     let path = tmp.path().join("templates").join("example.rs");
     assert!(path.exists());
 }
+
+#[test]
+fn template_arg_overrides_title() {
+    let tmp = tempdir().unwrap();
+    let sample = fs::canonicalize("tests/fixtures/sample.nessus").unwrap();
+
+    // create config
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .args(["--no-banner", "create-config"])
+        .current_dir(&tmp)
+        .assert()
+        .success();
+
+    let output = tmp.path().join("out.csv");
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .current_dir(&tmp)
+        .args([
+            "--no-banner",
+            "parse",
+            sample.to_str().unwrap(),
+            "-o",
+            output.to_str().unwrap(),
+            "-t",
+            "simple",
+            "--renderer",
+            "csv",
+            "--template-arg",
+            "title=Custom Title",
+        ])
+        .assert()
+        .success();
+    let contents = fs::read_to_string(output).unwrap();
+    assert!(contents.contains("Custom Title"));
+}

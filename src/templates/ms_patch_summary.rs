@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::error::Error;
 
 use crate::parser::NessusReport;
@@ -16,8 +17,13 @@ impl Template for MSPatchSummaryTemplate {
         &self,
         report: &NessusReport,
         renderer: &mut dyn Renderer,
+        args: &HashMap<String, String>,
     ) -> Result<(), Box<dyn Error>> {
-        renderer.text("Missing Microsoft Patch Summary")?;
+        let title = args
+            .get("title")
+            .map(String::as_str)
+            .unwrap_or("Missing Microsoft Patch Summary");
+        renderer.text(title)?;
         for patch in &report.patches {
             if let Some(host_id) = patch.host_id {
                 if let Some(host) = report.hosts.get(host_id as usize) {

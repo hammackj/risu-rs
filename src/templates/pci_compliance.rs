@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::error::Error;
 
 use crate::parser::NessusReport;
@@ -16,8 +17,13 @@ impl Template for PCIComplianceTemplate {
         &self,
         report: &NessusReport,
         renderer: &mut dyn Renderer,
+        args: &HashMap<String, String>,
     ) -> Result<(), Box<dyn Error>> {
-        renderer.text("PCI / DSS Compliance Overview")?;
+        let title = args
+            .get("title")
+            .map(String::as_str)
+            .unwrap_or("PCI / DSS Compliance Overview");
+        renderer.text(title)?;
         renderer.text(&format!("Total Hosts: {}", report.hosts.len()))?;
 
         // Naively look for plugin 33929 and classify output containing

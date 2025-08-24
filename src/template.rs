@@ -2,7 +2,7 @@ use std::{collections::HashMap, error::Error, fs, path::PathBuf};
 
 use libloading::{Library, Symbol};
 
-use crate::{parser::NessusReport, renderer::Renderer};
+use crate::{parser::NessusReport, renderer::Renderer, graphs};
 
 /// Trait implemented by report templates.
 pub trait Template {
@@ -89,6 +89,15 @@ impl Template for SimpleTemplate {
         renderer: &mut dyn Renderer,
     ) -> Result<(), Box<dyn Error>> {
         renderer.text(&format!("Hosts: {}", report.hosts.len()))?;
+
+        // Generate example graphs in the system temporary directory.
+        let tmp = std::env::temp_dir();
+        if let Ok(p) = graphs::os_distribution(report, &tmp) {
+            renderer.text(&format!("OS distribution chart: {}", p.display()))?;
+        }
+        if let Ok(p) = graphs::top_vulnerabilities(report, &tmp, 5) {
+            renderer.text(&format!("Top vulnerabilities chart: {}", p.display()))?;
+        }
         Ok(())
     }
 }

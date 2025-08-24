@@ -6,6 +6,7 @@ mod postprocess;
 mod renderer;
 mod schema;
 mod template;
+mod graphs;
 
 use clap::{Parser, Subcommand};
 

@@ -8,7 +8,8 @@ use quick_xml::Reader;
 use tracing::{debug, info};
 
 use crate::models::{Host, Item, Patch, Plugin};
-use crate::models::{HostProperty, ServiceDescription};
+use crate::models::HostProperty;
+use crate::models::ServiceDescription;
 use regex::Regex;
 
 /// Parsed representation of a Nessus report.

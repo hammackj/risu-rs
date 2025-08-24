@@ -149,8 +149,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     nessus_host_properties,
     nessus_hosts,
     nessus_items,
+    nessus_patches,
     nessus_plugin_metadata,
     nessus_plugins,
-    nessus_patches,
     nessus_service_descriptions,
 );

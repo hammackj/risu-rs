@@ -11,7 +11,8 @@ use quick_xml::events::Event;
 use tracing::{debug, info};
 
 use crate::models::{
-    Attachment, Host, HostProperty, Item, Patch, Plugin, ServiceDescription,
+    Attachment, FamilySelection, Host, HostProperty, Item, Patch, Plugin,
+    PluginPreference, Policy, PolicyPlugin, ServerPreference, ServiceDescription,
 };
 use base64::{Engine, engine::general_purpose};
 use regex::Regex;
@@ -27,6 +28,11 @@ pub struct NessusReport {
     pub attachments: Vec<Attachment>,
     pub host_properties: Vec<HostProperty>,
     pub service_descriptions: Vec<ServiceDescription>,
+    pub policies: Vec<Policy>,
+    pub policy_plugins: Vec<PolicyPlugin>,
+    pub family_selections: Vec<FamilySelection>,
+    pub plugin_preferences: Vec<PluginPreference>,
+    pub server_preferences: Vec<ServerPreference>,
 }
 
 /// Detect file type and parse accordingly.
@@ -94,6 +100,20 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                             ));
                         }
                     }
+                }
+                b"Policy" => {
+                    let (
+                        policy,
+                        mut policy_plugins,
+                        mut family_selections,
+                        mut plugin_preferences,
+                        mut server_preferences,
+                    ) = parse_policy(&mut reader, &mut buf)?;
+                    report.policies.push(policy);
+                    report.policy_plugins.append(&mut policy_plugins);
+                    report.family_selections.append(&mut family_selections);
+                    report.plugin_preferences.append(&mut plugin_preferences);
+                    report.server_preferences.append(&mut server_preferences);
                 }
                 b"ReportHost" => {
                     let mut host = empty_host();
@@ -313,6 +333,149 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
     }
 
     Ok(report)
+}
+
+fn parse_policy<R: std::io::BufRead>(
+    reader: &mut Reader<R>,
+    buf: &mut Vec<u8>,
+) -> Result<
+    (
+        Policy,
+        Vec<PolicyPlugin>,
+        Vec<FamilySelection>,
+        Vec<PluginPreference>,
+        Vec<ServerPreference>,
+    ),
+    crate::error::Error>
+{
+    let mut policy = Policy::default();
+    let mut policy_plugins = Vec::new();
+    let mut family_selections = Vec::new();
+    let mut plugin_preferences = Vec::new();
+    let mut server_preferences = Vec::new();
+
+    let mut current_tag: Option<String> = None;
+    let mut current_plugin: Option<PolicyPlugin> = None;
+    let mut current_family: Option<FamilySelection> = None;
+    let mut current_pref: Option<PluginPreference> = None;
+    let mut current_server_pref: Option<ServerPreference> = None;
+
+    loop {
+        match reader.read_event_into(buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"policyName" | b"policyComments" => {
+                    current_tag = Some(String::from_utf8_lossy(e.name().as_ref()).to_string());
+                }
+                b"PluginItem" => current_plugin = Some(PolicyPlugin::default()),
+                b"PluginID" | b"PluginName" | b"PluginFamily" | b"Status" => {
+                    current_tag = Some(String::from_utf8_lossy(e.name().as_ref()).to_string());
+                }
+                b"FamilyItem" => current_family = Some(FamilySelection::default()),
+                b"FamilyName" => {
+                    current_tag = Some("FamilyName".to_string());
+                }
+                b"item" => current_pref = Some(PluginPreference::default()),
+                b"pluginId" | b"fullname" | b"preferenceName" | b"preferenceType" | b"selectedValue" => {
+                    current_tag = Some(String::from_utf8_lossy(e.name().as_ref()).to_string());
+                }
+                b"preference" => current_server_pref = Some(ServerPreference::default()),
+                b"name" | b"value" => {
+                    current_tag = Some(String::from_utf8_lossy(e.name().as_ref()).to_string());
+                }
+                _ => {}
+            },
+            Event::Text(e) => {
+                if let Some(tag) = &current_tag {
+                    let txt = e.unescape()?.into_owned();
+                    if let Some(plg) = &mut current_plugin {
+                        match tag.as_str() {
+                            "PluginID" => plg.plugin_id = txt.parse().ok(),
+                            "PluginName" => plg.plugin_name = Some(txt),
+                            "PluginFamily" => plg.family_name = Some(txt),
+                            "Status" => plg.status = Some(txt),
+                            _ => {}
+                        }
+                    } else if let Some(fam) = &mut current_family {
+                        match tag.as_str() {
+                            "FamilyName" => fam.family_name = Some(txt),
+                            "Status" => fam.status = Some(txt),
+                            _ => {}
+                        }
+                    } else if let Some(pref) = &mut current_pref {
+                        match tag.as_str() {
+                            "pluginId" => pref.plugin_id = txt.parse().ok(),
+                            "fullname" => pref.fullname = Some(txt),
+                            "preferenceName" => pref.preference_name = Some(txt),
+                            "preferenceType" => pref.preference_type = Some(txt),
+                            "selectedValue" => pref.selected_value = Some(txt),
+                            _ => {}
+                        }
+                    } else if let Some(sp) = &mut current_server_pref {
+                        match tag.as_str() {
+                            "name" => sp.name = Some(txt),
+                            "value" => sp.value = Some(txt),
+                            _ => {}
+                        }
+                    } else {
+                        match tag.as_str() {
+                            "policyName" => policy.name = Some(txt),
+                            "policyComments" => policy.comments = Some(txt),
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            Event::End(e) => match e.name().as_ref() {
+                b"policyName"
+                | b"policyComments"
+                | b"PluginID"
+                | b"PluginName"
+                | b"PluginFamily"
+                | b"Status"
+                | b"FamilyName"
+                | b"pluginId"
+                | b"fullname"
+                | b"preferenceName"
+                | b"preferenceType"
+                | b"selectedValue"
+                | b"name"
+                | b"value" => current_tag = None,
+                b"PluginItem" => {
+                    if let Some(p) = current_plugin.take() {
+                        policy_plugins.push(p);
+                    }
+                }
+                b"FamilyItem" => {
+                    if let Some(f) = current_family.take() {
+                        family_selections.push(f);
+                    }
+                }
+                b"item" => {
+                    if let Some(p) = current_pref.take() {
+                        plugin_preferences.push(p);
+                    }
+                }
+                b"preference" => {
+                    if let Some(p) = current_server_pref.take() {
+                        server_preferences.push(p);
+                    }
+                }
+                b"Policy" => break,
+                _ => {}
+            },
+            Event::Eof => break,
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok((
+        policy,
+        policy_plugins,
+        family_selections,
+        plugin_preferences,
+        server_preferences,
+    ))
 }
 
 #[cfg(test)]

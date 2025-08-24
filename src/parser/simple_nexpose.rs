@@ -77,6 +77,11 @@ impl From<SimpleNexpose> for super::NessusReport {
             attachments: Vec::new(),
             host_properties: Vec::new(),
             service_descriptions: s.service_descriptions,
+            policies: Vec::new(),
+            policy_plugins: Vec::new(),
+            family_selections: Vec::new(),
+            plugin_preferences: Vec::new(),
+            server_preferences: Vec::new(),
         }
     }
 }

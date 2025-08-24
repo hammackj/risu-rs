@@ -3,11 +3,12 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use quick_xml::Reader;
 use quick_xml::events::Event;
+use quick_xml::Reader;
 use tracing::{debug, info};
 
-use crate::models::{Host, HostProperty, Item, Patch, Plugin, ServiceDescription};
+use crate::models::{Host, Item, Patch, Plugin};
+use crate::models::{HostProperty, ServiceDescription};
 use regex::Regex;
 
 /// Parsed representation of a Nessus report.
@@ -274,13 +275,11 @@ mod tests {
         assert!(names.contains(&"ssh".to_string()));
         assert!(names.contains(&"http".to_string()));
         // item plugin output captured
-        assert!(
-            report.items[0]
-                .plugin_output
-                .as_ref()
-                .unwrap()
-                .contains("Credentialed Checks")
-        );
+        assert!(report.items[0]
+            .plugin_output
+            .as_ref()
+            .unwrap()
+            .contains("Credentialed Checks"));
     }
 }
 

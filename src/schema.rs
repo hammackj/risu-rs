@@ -131,6 +131,15 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    nessus_references (id) {
+        id -> Integer,
+        plugin_id -> Nullable<Integer>,
+        source -> Nullable<Text>,
+        reference -> Nullable<Text>,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     nessus_hosts,
     nessus_host_properties,
@@ -138,4 +147,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     nessus_plugins,
     nessus_plugin_metadata,
     nessus_patches,
+    nessus_references,
 );

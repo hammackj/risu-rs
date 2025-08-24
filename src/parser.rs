@@ -7,7 +7,7 @@ use quick_xml::Reader;
 use quick_xml::events::Event;
 use tracing::{debug, info};
 
-use crate::models::{Host, Item, Patch, Plugin};
+use crate::models::{Host, Item, Patch, Plugin, Reference};
 use regex::Regex;
 
 /// Parsed representation of a Nessus report.
@@ -18,6 +18,7 @@ pub struct NessusReport {
     pub items: Vec<Item>,
     pub plugins: Vec<Plugin>,
     pub patches: Vec<Patch>,
+    pub references: Vec<Reference>,
 }
 
 /// Validate and parse a Nessus XML file into ORM models.
@@ -33,6 +34,7 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
     let mut current_host: Option<Host> = None;
     let mut current_tag: Option<String> = None;
     let mut current_patches: Vec<Patch> = Vec::new();
+    let mut current_item: Option<usize> = None;
 
     let patch_re = Regex::new("(?i)ms\\d{2}-\\d+").unwrap();
 
@@ -117,6 +119,10 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         }
                     }
                     report.items.push(item);
+                    current_item = Some(report.items.len() - 1);
+                }
+                b"xref" | b"ref" => {
+                    current_tag = Some(String::from_utf8_lossy(e.name().as_ref()).to_string());
                 }
                 _ => {
                     unknown_tags.insert(String::from_utf8_lossy(e.name().as_ref()).to_string());
@@ -124,8 +130,21 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
             },
             Event::Text(e) => {
                 if let Some(tag) = &current_tag {
-                    if let Some(host) = &mut current_host {
-                        let val = e.unescape()?.into_owned();
+                    let val = e.unescape()?.into_owned();
+                    if tag == "xref" || tag == "ref" {
+                        if let Some(idx) = current_item {
+                            let (src, value) = if let Some((s, v)) = val.split_once(':') {
+                                (s.to_string(), v.to_string())
+                            } else {
+                                ("UNKNOWN".to_string(), val)
+                            };
+                            let mut r = Reference::default();
+                            r.plugin_id = report.items[idx].plugin_id;
+                            r.source = Some(src);
+                            r.reference = Some(value);
+                            report.references.push(r);
+                        }
+                    } else if let Some(host) = &mut current_host {
                         if patch_re.is_match(tag) {
                             let mut patch = empty_patch();
                             patch.name = Some(tag.clone());
@@ -156,6 +175,12 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                             report.patches.push(patch);
                         }
                     }
+                }
+                b"ReportItem" => {
+                    current_item = None;
+                }
+                b"xref" | b"ref" => {
+                    current_tag = None;
                 }
                 _ => {}
             },
@@ -202,6 +227,11 @@ mod tests {
         assert_eq!(report.patches.len(), 1);
         assert_eq!(report.patches[0].name.as_deref(), Some("MS12-001"));
         assert_eq!(report.patches[0].value.as_deref(), Some("KB123456"));
+        assert_eq!(report.references.len(), 2);
+        let cves = report.items[0].cves(&report);
+        assert_eq!(cves, vec!["CVE-2023-9999"]);
+        let bids = report.items[0].bids(&report);
+        assert_eq!(bids, vec!["12345"]);
     }
 }
 
@@ -314,5 +344,87 @@ fn empty_patch() -> Patch {
         value: None,
         user_id: None,
         engagement_id: None,
+    }
+}
+
+impl Item {
+    /// All references associated with this item via its plugin ID.
+    pub fn references<'a>(&self, report: &'a NessusReport) -> Vec<&'a Reference> {
+        match self.plugin_id {
+            Some(pid) => report
+                .references
+                .iter()
+                .filter(|r| r.plugin_id == Some(pid))
+                .collect(),
+            None => Vec::new(),
+        }
+    }
+
+    /// Convenience helper returning CVE identifiers for this item.
+    pub fn cves<'a>(&self, report: &'a NessusReport) -> Vec<&'a str> {
+        self.references(report)
+            .into_iter()
+            .filter_map(|r| {
+                if r.source.as_deref() == Some("CVE") {
+                    r.reference.as_deref()
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Convenience helper returning BID identifiers for this item.
+    pub fn bids<'a>(&self, report: &'a NessusReport) -> Vec<&'a str> {
+        self.references(report)
+            .into_iter()
+            .filter_map(|r| {
+                if r.source.as_deref() == Some("BID") {
+                    r.reference.as_deref()
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+}
+
+impl Plugin {
+    /// All references for this plugin.
+    pub fn references<'a>(&self, report: &'a NessusReport) -> Vec<&'a Reference> {
+        match self.plugin_id {
+            Some(pid) => report
+                .references
+                .iter()
+                .filter(|r| r.plugin_id == Some(pid))
+                .collect(),
+            None => Vec::new(),
+        }
+    }
+
+    pub fn cves<'a>(&self, report: &'a NessusReport) -> Vec<&'a str> {
+        self.references(report)
+            .into_iter()
+            .filter_map(|r| {
+                if r.source.as_deref() == Some("CVE") {
+                    r.reference.as_deref()
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    pub fn bids<'a>(&self, report: &'a NessusReport) -> Vec<&'a str> {
+        self.references(report)
+            .into_iter()
+            .filter_map(|r| {
+                if r.source.as_deref() == Some("BID") {
+                    r.reference.as_deref()
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }

@@ -9,8 +9,8 @@ use diesel::sqlite::SqliteConnection;
 use std::net::IpAddr;
 
 use crate::schema::{
-    nessus_host_properties, nessus_hosts, nessus_items, nessus_patches, nessus_plugins,
-    nessus_service_descriptions,
+    nessus_attachments, nessus_host_properties, nessus_hosts, nessus_items, nessus_patches,
+    nessus_plugins, nessus_service_descriptions,
 };
 
 #[derive(Debug, Queryable, Identifiable)]
@@ -30,6 +30,28 @@ pub struct Host {
     pub risk_score: Option<i32>,
     pub user_id: Option<i32>,
     pub engagement_id: Option<i32>,
+}
+
+#[derive(Debug, Queryable, Identifiable)]
+#[diesel(table_name = nessus_attachments)]
+pub struct Attachment {
+    pub id: i32,
+    pub name: Option<String>,
+    pub content_type: Option<String>,
+    pub path: Option<String>,
+    pub size: Option<i32>,
+}
+
+impl Default for Attachment {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            name: None,
+            content_type: None,
+            path: None,
+            size: None,
+        }
+    }
 }
 
 #[derive(Debug, Queryable, Identifiable, Associations)]
@@ -60,6 +82,7 @@ impl Default for HostProperty {
 #[derive(Debug, Queryable, Identifiable, Associations)]
 #[diesel(belongs_to(Host, foreign_key = host_id))]
 #[diesel(belongs_to(Plugin, foreign_key = plugin_id))]
+#[diesel(belongs_to(Attachment, foreign_key = attachment_id))]
 #[diesel(table_name = nessus_items)]
 pub struct Item {
     pub id: i32,

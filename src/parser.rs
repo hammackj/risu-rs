@@ -1,15 +1,15 @@
 //! Utilities for parsing Nessus XML reports into in-memory models.
 
 use std::collections::BTreeSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use quick_xml::events::Event;
 use quick_xml::Reader;
 use tracing::{debug, info};
 
-use crate::models::{Host, Item, Patch, Plugin};
-use crate::models::HostProperty;
-use crate::models::ServiceDescription;
+use crate::models::{Attachment, Host, Item, Patch, Plugin};
+use crate::models::{HostProperty, ServiceDescription};
+use base64::{engine::general_purpose, Engine};
 use regex::Regex;
 
 /// Parsed representation of a Nessus report.
@@ -20,6 +20,7 @@ pub struct NessusReport {
     pub items: Vec<Item>,
     pub plugins: Vec<Plugin>,
     pub patches: Vec<Patch>,
+    pub attachments: Vec<Attachment>,
     pub host_properties: Vec<HostProperty>,
     pub service_descriptions: Vec<ServiceDescription>,
 }
@@ -27,6 +28,8 @@ pub struct NessusReport {
 /// Validate and parse a Nessus XML file into ORM models.
 pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
     info!("Parsing file: {}", path.display());
+
+    let base_dir: PathBuf = path.parent().unwrap_or(Path::new(".")).to_path_buf();
 
     let mut reader = Reader::from_file(path)?;
     reader.trim_text(true);
@@ -43,6 +46,14 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
     let mut current_item_index: Option<usize> = None;
     let mut in_plugin_output = false;
     let mut plugin_output_buf = String::new();
+
+    struct PendingAttachment {
+        name: String,
+        content_type: Option<String>,
+        data: String,
+    }
+
+    let mut current_attachment: Option<PendingAttachment> = None;
 
     let patch_re = Regex::new("(?i)ms\\d{2}-\\d+").unwrap();
 
@@ -138,12 +149,37 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     in_plugin_output = true;
                     plugin_output_buf.clear();
                 }
+                b"attachment" => {
+                    let mut name = String::new();
+                    let mut content_type = None;
+                    for a in e.attributes().flatten() {
+                        match a.key.as_ref() {
+                            b"name" => name = a.unescape_value()?.to_string(),
+                            b"type" => {
+                                content_type = Some(a.unescape_value()?.to_string())
+                            }
+                            _ => {
+                                unknown_attrs.insert(format!(
+                                    "attachment {}",
+                                    String::from_utf8_lossy(a.key.as_ref())
+                                ));
+                            }
+                        }
+                    }
+                    current_attachment = Some(PendingAttachment {
+                        name,
+                        content_type,
+                        data: String::new(),
+                    });
+                }
                 _ => {
                     unknown_tags.insert(String::from_utf8_lossy(e.name().as_ref()).to_string());
                 }
             },
             Event::Text(e) => {
-                if in_plugin_output {
+                if let Some(att) = &mut current_attachment {
+                    att.data.push_str(&e.unescape()?.into_owned());
+                } else if in_plugin_output {
                     plugin_output_buf.push_str(&e.unescape()?.into_owned());
                 } else if let Some(tag) = &current_tag {
                     if let Some(host) = &mut current_host {
@@ -182,6 +218,25 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                                 svc.item_id = Some(idx as i32);
                                 current_service_desc.push(svc);
                             }
+                        }
+                    }
+                }
+                b"attachment" => {
+                    if let Some(att) = current_attachment.take() {
+                        let data = general_purpose::STANDARD
+                            .decode(att.data.trim())
+                            .unwrap_or_default();
+                        let file_path = base_dir.join(&att.name);
+                        std::fs::write(&file_path, &data)?;
+                        let mut attachment = empty_attachment();
+                        attachment.name = Some(att.name);
+                        attachment.content_type = att.content_type;
+                        attachment.path = Some(file_path.to_string_lossy().to_string());
+                        attachment.size = Some(data.len() as i32);
+                        let attachment_index = report.attachments.len();
+                        report.attachments.push(attachment);
+                        if let Some(idx) = current_item_index {
+                            report.items[idx].attachment_id = Some(attachment_index as i32);
                         }
                     }
                 }
@@ -282,6 +337,30 @@ mod tests {
             .unwrap()
             .contains("Credentialed Checks"));
     }
+
+    #[test]
+    fn parses_attachment_block() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("attach.nessus");
+        let xml = r#"<NessusClientData_v2>
+<ReportHost name='h'>
+<HostProperties></HostProperties>
+<ReportItem pluginID='1' severity='0' pluginName='plug'>
+<attachment name='a.txt' type='text/plain'>aGVsbG8=</attachment>
+</ReportItem>
+</ReportHost>
+</NessusClientData_v2>"#;
+        std::fs::write(&file_path, xml).unwrap();
+        let report = parse_file(&file_path).expect("parse");
+        assert_eq!(report.attachments.len(), 1);
+        assert_eq!(report.attachments[0].name.as_deref(), Some("a.txt"));
+        assert_eq!(report.items.len(), 1);
+        assert_eq!(report.items[0].attachment_id, Some(0));
+        let saved = dir.path().join("a.txt");
+        assert!(saved.exists());
+        let data = std::fs::read(saved).unwrap();
+        assert_eq!(data, b"hello");
+    }
 }
 
 fn empty_host() -> Host {
@@ -331,6 +410,16 @@ fn empty_item() -> Item {
         risk_score: None,
         user_id: None,
         engagement_id: None,
+    }
+}
+
+fn empty_attachment() -> Attachment {
+    Attachment {
+        id: 0,
+        name: None,
+        content_type: None,
+        path: None,
+        size: None,
     }
 }
 

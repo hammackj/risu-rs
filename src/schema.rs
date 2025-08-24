@@ -111,6 +111,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    nessus_attachments (id) {
+        id -> Integer,
+        name -> Nullable<Text>,
+        content_type -> Nullable<Text>,
+        path -> Nullable<Text>,
+        size -> Nullable<Integer>,
+    }
+}
+
+diesel::table! {
     nessus_service_descriptions (id) {
         id -> Integer,
         host_id -> Nullable<Integer>,
@@ -146,6 +156,7 @@ diesel::table! {
 }
 
 diesel::allow_tables_to_appear_in_same_query!(
+    nessus_attachments,
     nessus_host_properties,
     nessus_hosts,
     nessus_items,

@@ -4,6 +4,8 @@
 //! risu-rs create-config              # write default config.yml
 //! risu-rs migrate --create-tables    # run database migrations
 //! risu-rs parse scan.nessus -o out.csv -t simple --post-process
+//! risu-rs --list-templates           # list available templates
+//! risu-rs --list-post-process        # list post-process plugins
 //! ```
 
 mod banner;
@@ -120,9 +122,7 @@ fn run() -> Result<(), error::Error> {
     }
 
     if cli.list_post_process {
-        for info in postprocess::list() {
-            println!("{}", info.name);
-        }
+        postprocess::display();
         return Ok(());
     }
 
@@ -141,9 +141,7 @@ fn run() -> Result<(), error::Error> {
         manager.register(Box::new(templates::StigFindingsSummaryTemplate));
         manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
         manager.load_templates().map_err(error::Error::Template)?;
-        for name in manager.available() {
-            println!("{}", name);
-        }
+        manager.display();
         return Ok(());
     }
 

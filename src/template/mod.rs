@@ -83,6 +83,13 @@ impl TemplateManager {
     pub fn available(&self) -> Vec<String> {
         self.templates.keys().cloned().collect()
     }
+
+    /// Display all available template names.
+    pub fn display(&self) {
+        for name in self.available() {
+            println!("{}", name);
+        }
+    }
 }
 
 /// Very small built-in template demonstrating renderer usage.

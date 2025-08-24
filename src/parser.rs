@@ -1,13 +1,15 @@
 //! Utilities for parsing Nessus XML reports into in-memory models.
 
 use std::collections::BTreeSet;
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use quick_xml::Reader;
 use quick_xml::events::Event;
 use tracing::{debug, info};
 
-use crate::models::{Host, Item, Patch, Plugin};
+use crate::models::{Attachment, Host, Item, Patch, Plugin};
+use base64::{engine::general_purpose, Engine};
 use regex::Regex;
 
 /// Parsed representation of a Nessus report.
@@ -18,6 +20,7 @@ pub struct NessusReport {
     pub items: Vec<Item>,
     pub plugins: Vec<Plugin>,
     pub patches: Vec<Patch>,
+    pub attachments: Vec<Attachment>,
 }
 
 /// Validate and parse a Nessus XML file into ORM models.
@@ -33,6 +36,15 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
     let mut current_host: Option<Host> = None;
     let mut current_tag: Option<String> = None;
     let mut current_patches: Vec<Patch> = Vec::new();
+    let base_dir: PathBuf = path.parent().unwrap_or(Path::new(".")).to_path_buf();
+
+    struct PendingAttachment {
+        name: String,
+        content_type: Option<String>,
+        data: String,
+    }
+
+    let mut current_attachment: Option<PendingAttachment> = None;
 
     let patch_re = Regex::new("(?i)ms\\d{2}-\\d+").unwrap();
 
@@ -118,12 +130,35 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     }
                     report.items.push(item);
                 }
+                b"attachment" => {
+                    let mut name = String::new();
+                    let mut content_type = None;
+                    for a in e.attributes().flatten() {
+                        match a.key.as_ref() {
+                            b"name" => name = a.unescape_value()?.to_string(),
+                            b"type" => content_type = Some(a.unescape_value()?.to_string()),
+                            _ => {
+                                unknown_attrs.insert(format!(
+                                    "attachment {}",
+                                    String::from_utf8_lossy(a.key.as_ref())
+                                ));
+                            }
+                        }
+                    }
+                    current_attachment = Some(PendingAttachment {
+                        name,
+                        content_type,
+                        data: String::new(),
+                    });
+                }
                 _ => {
                     unknown_tags.insert(String::from_utf8_lossy(e.name().as_ref()).to_string());
                 }
             },
             Event::Text(e) => {
-                if let Some(tag) = &current_tag {
+                if let Some(att) = &mut current_attachment {
+                    att.data.push_str(&e.unescape()?.into_owned());
+                } else if let Some(tag) = &current_tag {
                     if let Some(host) = &mut current_host {
                         let val = e.unescape()?.into_owned();
                         if patch_re.is_match(tag) {
@@ -154,6 +189,25 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         for mut patch in current_patches.drain(..) {
                             patch.host_id = Some(host_index);
                             report.patches.push(patch);
+                        }
+                    }
+                }
+                b"attachment" => {
+                    if let Some(att) = current_attachment.take() {
+                        let bytes = general_purpose::STANDARD
+                            .decode(att.data.as_bytes())
+                            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                        let file_path = base_dir.join(&att.name);
+                        fs::write(&file_path, &bytes)?;
+                        let mut attachment = Attachment::default();
+                        attachment.name = Some(att.name);
+                        attachment.content_type = att.content_type;
+                        attachment.path = Some(file_path.to_string_lossy().to_string());
+                        attachment.size = Some(bytes.len() as i32);
+                        let id = report.attachments.len() as i32;
+                        report.attachments.push(attachment);
+                        if let Some(item) = report.items.last_mut() {
+                            item.attachment_id = Some(id);
                         }
                     }
                 }
@@ -202,6 +256,30 @@ mod tests {
         assert_eq!(report.patches.len(), 1);
         assert_eq!(report.patches[0].name.as_deref(), Some("MS12-001"));
         assert_eq!(report.patches[0].value.as_deref(), Some("KB123456"));
+    }
+
+    #[test]
+    fn parses_attachment_block() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("attach.nessus");
+        let xml = r#"<NessusClientData_v2>
+<ReportHost name='h'>
+<HostProperties></HostProperties>
+<ReportItem pluginID='1' severity='0' pluginName='plug'>
+<attachment name='a.txt' type='text/plain'>aGVsbG8=</attachment>
+</ReportItem>
+</ReportHost>
+</NessusClientData_v2>"#;
+        std::fs::write(&file_path, xml).unwrap();
+        let report = parse_file(&file_path).expect("parse");
+        assert_eq!(report.attachments.len(), 1);
+        assert_eq!(report.attachments[0].name.as_deref(), Some("a.txt"));
+        assert_eq!(report.items.len(), 1);
+        assert_eq!(report.items[0].attachment_id, Some(0));
+        let saved = dir.path().join("a.txt");
+        assert!(saved.exists());
+        let data = std::fs::read(saved).unwrap();
+        assert_eq!(data, b"hello");
     }
 }
 

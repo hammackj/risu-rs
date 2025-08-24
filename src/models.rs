@@ -4,6 +4,10 @@
 //! by the parser and CLI. Only a subset of the original Ruby models are
 //! implemented at the moment.
 
+pub mod attachment;
+
+pub use attachment::Attachment;
+
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::net::IpAddr;

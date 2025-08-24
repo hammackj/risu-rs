@@ -6,6 +6,7 @@ use base64::{engine::general_purpose, Engine};
 use diesel::sqlite::SqliteConnection;
 
 use crate::graphs::{TopVulnGraph, WindowsOsGraph};
+use crate::models::Attachment;
 
 /// Produce a message indicating the operating system is unsupported.
 pub fn unsupported_os(os: &str) -> String {
@@ -41,6 +42,26 @@ pub fn windows_os_graph(conn: &mut SqliteConnection) -> Result<String, Box<dyn E
     embed_graph(&bytes)
 }
 
+/// Embed a previously saved attachment as a data URI.
+pub fn embed_attachment(att: &Attachment) -> Result<String, Box<dyn Error>> {
+    let path = att
+        .path
+        .as_ref()
+        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "missing path"))?;
+    let bytes = fs::read(path)?;
+    let encoded = general_purpose::STANDARD.encode(bytes);
+    let ctype = att
+        .content_type
+        .clone()
+        .unwrap_or_else(|| "application/octet-stream".to_string());
+    Ok(format!("data:{ctype};base64,{encoded}"))
+}
+
+/// Return the file system path of an attachment for referencing.
+pub fn attachment_path(att: &Attachment) -> Option<&str> {
+    att.path.as_deref()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -63,5 +84,24 @@ mod tests {
         let b64 = &data["data:image/png;base64,".len()..];
         let expected = general_purpose::STANDARD.encode(&[1u8, 2, 3]);
         assert_eq!(b64, expected);
+    }
+
+    #[test]
+    fn embed_attachment_reads_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("att.bin");
+        std::fs::write(&file_path, b"hi").unwrap();
+        let att = Attachment {
+            id: 0,
+            name: Some("att.bin".into()),
+            content_type: Some("text/plain".into()),
+            path: Some(file_path.to_string_lossy().to_string()),
+            size: Some(2),
+        };
+        let data = embed_attachment(&att).unwrap();
+        assert!(data.starts_with("data:text/plain;base64,"));
+        let expected = general_purpose::STANDARD.encode(b"hi");
+        assert_eq!(data["data:text/plain;base64,".len()..].to_string(), expected);
+        assert_eq!(attachment_path(&att), att.path.as_deref());
     }
 }

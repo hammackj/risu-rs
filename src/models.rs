@@ -62,6 +62,39 @@ pub struct Item {
     pub engagement_id: Option<i32>,
 }
 
+impl Default for Item {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            host_id: None,
+            plugin_id: None,
+            attachment_id: None,
+            plugin_output: None,
+            port: None,
+            svc_name: None,
+            protocol: None,
+            severity: None,
+            plugin_name: None,
+            verified: None,
+            cm_compliance_info: None,
+            cm_compliance_actual_value: None,
+            cm_compliance_check_id: None,
+            cm_compliance_policy_value: None,
+            cm_compliance_audit_file: None,
+            cm_compliance_check_name: None,
+            cm_compliance_result: None,
+            cm_compliance_output: None,
+            cm_compliance_reference: None,
+            cm_compliance_see_also: None,
+            cm_compliance_solution: None,
+            real_severity: None,
+            risk_score: None,
+            user_id: None,
+            engagement_id: None,
+        }
+    }
+}
+
 #[derive(Debug, Queryable, Identifiable)]
 #[diesel(table_name = nessus_plugins)]
 pub struct Plugin {
@@ -111,6 +144,59 @@ pub struct Plugin {
     pub user_id: Option<i32>,
     pub engagement_id: Option<i32>,
     pub policy_id: Option<i32>,
+}
+
+impl Default for Plugin {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            plugin_id: None,
+            plugin_name: None,
+            family_name: None,
+            description: None,
+            plugin_version: None,
+            plugin_publication_date: None,
+            plugin_modification_date: None,
+            vuln_publication_date: None,
+            cvss_vector: None,
+            cvss_base_score: None,
+            cvss_temporal_score: None,
+            cvss_temporal_vector: None,
+            exploitability_ease: None,
+            exploit_framework_core: None,
+            exploit_framework_metasploit: None,
+            metasploit_name: None,
+            exploit_framework_canvas: None,
+            canvas_package: None,
+            exploit_available: None,
+            risk_factor: None,
+            solution: None,
+            synopsis: None,
+            plugin_type: None,
+            exploit_framework_exploithub: None,
+            exploithub_sku: None,
+            stig_severity: None,
+            fname: None,
+            always_run: None,
+            script_version: None,
+            d2_elliot_name: None,
+            exploit_framework_d2_elliot: None,
+            exploited_by_malware: None,
+            rollup: None,
+            risk_score: None,
+            compliance: None,
+            root_cause: None,
+            agent: None,
+            potential_vulnerability: None,
+            in_the_news: None,
+            exploited_by_nessus: None,
+            unsupported_by_vendor: None,
+            default_account: None,
+            user_id: None,
+            engagement_id: None,
+            policy_id: None,
+        }
+    }
 }
 
 impl Host {

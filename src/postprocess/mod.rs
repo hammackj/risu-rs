@@ -79,5 +79,6 @@ pub fn list() -> Vec<PostProcessInfo> {
 mod fix_ips;
 mod normalize_plugin_names;
 mod risk_score;
+mod rollups;
 mod root_cause;
 mod sort_hosts;

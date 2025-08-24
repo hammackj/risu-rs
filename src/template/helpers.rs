@@ -1,0 +1,51 @@
+use std::error::Error;
+use std::fs;
+use std::path::Path;
+
+use base64::{engine::general_purpose, Engine};
+
+/// Produce a message indicating the operating system is unsupported.
+pub fn unsupported_os(os: &str) -> String {
+    format!("Unsupported operating system: {os}")
+}
+
+/// Format text as a second-level heading.
+pub fn heading2(text: &str) -> String {
+    format!("## {text}")
+}
+
+/// Embed a graph image as a base64 data URI.
+pub fn embed_graph(path: &Path) -> Result<String, Box<dyn Error>> {
+    let bytes = fs::read(path)?;
+    let encoded = general_purpose::STANDARD.encode(bytes);
+    Ok(format!("data:image/png;base64,{encoded}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::NamedTempFile;
+    use std::io::Write;
+
+    #[test]
+    fn unsupported_os_message() {
+        let msg = unsupported_os("Solaris");
+        assert_eq!(msg, "Unsupported operating system: Solaris");
+    }
+
+    #[test]
+    fn heading2_formats() {
+        assert_eq!(heading2("Title"), "## Title");
+    }
+
+    #[test]
+    fn embed_graph_encodes_file() {
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(&[1u8, 2, 3]).unwrap();
+        let data = embed_graph(file.path()).unwrap();
+        assert!(data.starts_with("data:image/png;base64,"));
+        let b64 = &data["data:image/png;base64,".len()..];
+        let expected = general_purpose::STANDARD.encode(&[1u8, 2, 3]);
+        assert_eq!(b64, expected);
+    }
+}

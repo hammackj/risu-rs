@@ -33,6 +33,7 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
     let mut report = NessusReport::default();
     let mut current_host: Option<Host> = None;
     let mut current_tag: Option<String> = None;
+    let mut current_ref: Option<Reference> = None;
     let mut current_patches: Vec<Patch> = Vec::new();
     let mut current_item: Option<usize> = None;
 
@@ -122,29 +123,42 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     current_item = Some(report.items.len() - 1);
                 }
                 b"xref" | b"ref" => {
-                    current_tag = Some(String::from_utf8_lossy(e.name().as_ref()).to_string());
+                    if let Some(idx) = current_item {
+                        let mut r = Reference::default();
+                        r.plugin_id = report.items[idx].plugin_id;
+                        for a in e.attributes().flatten() {
+                            if a.key.as_ref() == b"source" {
+                                r.source = Some(a.unescape_value()?.to_string());
+                            } else {
+                                unknown_attrs.insert(format!(
+                                    "{} {}",
+                                    String::from_utf8_lossy(e.name().as_ref()),
+                                    String::from_utf8_lossy(a.key.as_ref())
+                                ));
+                            }
+                        }
+                        current_ref = Some(r);
+                    }
                 }
                 _ => {
                     unknown_tags.insert(String::from_utf8_lossy(e.name().as_ref()).to_string());
                 }
             },
             Event::Text(e) => {
-                if let Some(tag) = &current_tag {
-                    let val = e.unescape()?.into_owned();
-                    if tag == "xref" || tag == "ref" {
-                        if let Some(idx) = current_item {
-                            let (src, value) = if let Some((s, v)) = val.split_once(':') {
-                                (s.to_string(), v.to_string())
-                            } else {
-                                ("UNKNOWN".to_string(), val)
-                            };
-                            let mut r = Reference::default();
-                            r.plugin_id = report.items[idx].plugin_id;
-                            r.source = Some(src);
-                            r.reference = Some(value);
-                            report.references.push(r);
+                let val = e.unescape()?.into_owned();
+                if let Some(ref mut r) = current_ref {
+                    if r.source.is_none() {
+                        if let Some((s, v)) = val.split_once(':') {
+                            r.source = Some(s.to_string());
+                            r.reference = Some(v.to_string());
+                        } else {
+                            r.reference = Some(val);
                         }
-                    } else if let Some(host) = &mut current_host {
+                    } else {
+                        r.reference = Some(val);
+                    }
+                } else if let Some(tag) = &current_tag {
+                    if let Some(host) = &mut current_host {
                         if patch_re.is_match(tag) {
                             let mut patch = empty_patch();
                             patch.name = Some(tag.clone());
@@ -180,7 +194,9 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     current_item = None;
                 }
                 b"xref" | b"ref" => {
-                    current_tag = None;
+                    if let Some(r) = current_ref.take() {
+                        report.references.push(r);
+                    }
                 }
                 _ => {}
             },

@@ -1,16 +1,19 @@
-use std::{collections::HashMap, error::Error, fs, io::Write, path::PathBuf};
+use std::{collections::HashMap, error::Error, fs, path::PathBuf};
 
 use libloading::{Library, Symbol};
-use printpdf::*;
 
-use crate::parser::NessusReport;
+use crate::{parser::NessusReport, renderer::Renderer};
 
 /// Trait implemented by report templates.
 pub trait Template {
     /// Name used to reference the template.
     fn name(&self) -> &str;
-    /// Generate output for the given report into the writer.
-    fn generate(&self, report: &NessusReport, writer: &mut dyn Write) -> Result<(), Box<dyn Error>>;
+    /// Generate output for the given report using the provided renderer.
+    fn generate(
+        &self,
+        report: &NessusReport,
+        renderer: &mut dyn Renderer,
+    ) -> Result<(), Box<dyn Error>>;
 }
 
 /// Manages discovery and loading of compiled template modules.
@@ -23,7 +26,11 @@ pub struct TemplateManager {
 impl TemplateManager {
     /// Create a new manager that searches the provided paths.
     pub fn new(paths: Vec<PathBuf>) -> Self {
-        Self { templates: HashMap::new(), _libs: Vec::new(), paths }
+        Self {
+            templates: HashMap::new(),
+            _libs: Vec::new(),
+            paths,
+        }
     }
 
     /// Load templates from all configured paths. Each dynamic library is
@@ -68,7 +75,7 @@ impl TemplateManager {
     }
 }
 
-/// Very small built-in template demonstrating `printpdf` usage.
+/// Very small built-in template demonstrating renderer usage.
 pub struct SimpleTemplate;
 
 impl Template for SimpleTemplate {
@@ -76,14 +83,12 @@ impl Template for SimpleTemplate {
         "simple"
     }
 
-    fn generate(&self, report: &NessusReport, writer: &mut dyn Write) -> Result<(), Box<dyn Error>> {
-        let (doc, page1, layer1) = PdfDocument::new("Report", Mm(210.0), Mm(297.0), "Layer 1");
-        let layer = doc.get_page(page1).get_layer(layer1);
-        let font = doc.add_builtin_font(BuiltinFont::Helvetica)?;
-        let text = format!("Hosts: {}", report.hosts.len());
-        layer.use_text(text, 14.0, Mm(10.0), Mm(287.0), &font);
-        let mut buf = std::io::BufWriter::new(writer);
-        doc.save(&mut buf)?;
+    fn generate(
+        &self,
+        report: &NessusReport,
+        renderer: &mut dyn Renderer,
+    ) -> Result<(), Box<dyn Error>> {
+        renderer.text(&format!("Hosts: {}", report.hosts.len()))?;
         Ok(())
     }
 }

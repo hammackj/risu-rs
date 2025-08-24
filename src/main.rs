@@ -8,6 +8,7 @@
 
 mod banner;
 mod config;
+mod console;
 mod error;
 mod graphs;
 mod migrate;
@@ -38,6 +39,9 @@ struct Cli {
     /// List available post-processing plugins
     #[arg(long = "list-post-process")]
     list_post_process: bool,
+    /// Open an interactive database console
+    #[arg(long)]
+    console: bool,
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -94,6 +98,11 @@ fn run() -> Result<(), error::Error> {
     let cli = Cli::parse_from(args);
 
     init_logging(&cli.log_level, &cli.log_format);
+
+    if cli.console {
+        console::run()?;
+        return Ok(());
+    }
 
     if cli.list_post_process {
         for info in postprocess::list() {

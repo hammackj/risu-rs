@@ -8,7 +8,10 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::net::IpAddr;
 
-use crate::schema::{nessus_hosts, nessus_items, nessus_patches, nessus_plugins};
+use crate::schema::{
+    nessus_host_properties, nessus_hosts, nessus_items, nessus_patches, nessus_plugins,
+    nessus_service_descriptions,
+};
 
 #[derive(Debug, Queryable, Identifiable)]
 #[diesel(table_name = nessus_hosts)]
@@ -27,6 +30,31 @@ pub struct Host {
     pub risk_score: Option<i32>,
     pub user_id: Option<i32>,
     pub engagement_id: Option<i32>,
+}
+
+#[derive(Debug, Queryable, Identifiable, Associations)]
+#[diesel(belongs_to(Host, foreign_key = host_id))]
+#[diesel(table_name = nessus_host_properties)]
+pub struct HostProperty {
+    pub id: i32,
+    pub host_id: Option<i32>,
+    pub name: Option<String>,
+    pub value: Option<String>,
+    pub user_id: Option<i32>,
+    pub engagement_id: Option<i32>,
+}
+
+impl Default for HostProperty {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            host_id: None,
+            name: None,
+            value: None,
+            user_id: None,
+            engagement_id: None,
+        }
+    }
 }
 
 #[derive(Debug, Queryable, Identifiable, Associations)]
@@ -156,6 +184,38 @@ pub struct Patch {
     pub value: Option<String>,
     pub user_id: Option<i32>,
     pub engagement_id: Option<i32>,
+}
+
+#[derive(Debug, Queryable, Identifiable, Associations)]
+#[diesel(belongs_to(Host, foreign_key = host_id))]
+#[diesel(belongs_to(Item, foreign_key = item_id))]
+#[diesel(table_name = nessus_service_descriptions)]
+pub struct ServiceDescription {
+    pub id: i32,
+    pub host_id: Option<i32>,
+    pub item_id: Option<i32>,
+    pub name: Option<String>,
+    pub port: Option<i32>,
+    pub protocol: Option<String>,
+    pub description: Option<String>,
+    pub user_id: Option<i32>,
+    pub engagement_id: Option<i32>,
+}
+
+impl Default for ServiceDescription {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            host_id: None,
+            item_id: None,
+            name: None,
+            port: None,
+            protocol: None,
+            description: None,
+            user_id: None,
+            engagement_id: None,
+        }
+    }
 }
 
 impl Default for Patch {

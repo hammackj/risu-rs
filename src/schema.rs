@@ -111,6 +111,20 @@ diesel::table! {
 }
 
 diesel::table! {
+    nessus_service_descriptions (id) {
+        id -> Integer,
+        host_id -> Nullable<Integer>,
+        item_id -> Nullable<Integer>,
+        name -> Nullable<Text>,
+        port -> Nullable<Integer>,
+        protocol -> Nullable<Text>,
+        description -> Nullable<Text>,
+        user_id -> Nullable<Integer>,
+        engagement_id -> Nullable<Integer>,
+    }
+}
+
+diesel::table! {
     nessus_plugin_metadata (id) {
         id -> Integer,
         script_id -> Nullable<Integer>,
@@ -138,4 +152,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     nessus_plugins,
     nessus_plugin_metadata,
     nessus_patches,
+    nessus_service_descriptions,
 );

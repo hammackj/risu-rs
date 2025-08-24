@@ -7,7 +7,7 @@ use quick_xml::Reader;
 use quick_xml::events::Event;
 use tracing::{debug, info};
 
-use crate::models::{Host, Item, Patch, Plugin};
+use crate::models::{Host, HostProperty, Item, Patch, Plugin, ServiceDescription};
 use regex::Regex;
 
 /// Parsed representation of a Nessus report.
@@ -18,6 +18,8 @@ pub struct NessusReport {
     pub items: Vec<Item>,
     pub plugins: Vec<Plugin>,
     pub patches: Vec<Patch>,
+    pub host_properties: Vec<HostProperty>,
+    pub service_descriptions: Vec<ServiceDescription>,
 }
 
 /// Validate and parse a Nessus XML file into ORM models.
@@ -33,6 +35,12 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
     let mut current_host: Option<Host> = None;
     let mut current_tag: Option<String> = None;
     let mut current_patches: Vec<Patch> = Vec::new();
+    let mut current_host_properties: Vec<HostProperty> = Vec::new();
+    let mut current_service_desc: Vec<ServiceDescription> = Vec::new();
+    let mut current_host_item_indices: Vec<usize> = Vec::new();
+    let mut current_item_index: Option<usize> = None;
+    let mut in_plugin_output = false;
+    let mut plugin_output_buf = String::new();
 
     let patch_re = Regex::new("(?i)ms\\d{2}-\\d+").unwrap();
 
@@ -70,6 +78,9 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     }
                     current_host = Some(host);
                     current_patches.clear();
+                    current_host_properties.clear();
+                    current_service_desc.clear();
+                    current_host_item_indices.clear();
                 }
                 b"HostProperties" => {
                     // nothing to do, tags will follow
@@ -116,16 +127,29 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                             }
                         }
                     }
+                    let idx = report.items.len();
                     report.items.push(item);
+                    current_host_item_indices.push(idx);
+                    current_item_index = Some(idx);
+                }
+                b"plugin_output" => {
+                    in_plugin_output = true;
+                    plugin_output_buf.clear();
                 }
                 _ => {
                     unknown_tags.insert(String::from_utf8_lossy(e.name().as_ref()).to_string());
                 }
             },
             Event::Text(e) => {
-                if let Some(tag) = &current_tag {
+                if in_plugin_output {
+                    plugin_output_buf.push_str(&e.unescape()?.into_owned());
+                } else if let Some(tag) = &current_tag {
                     if let Some(host) = &mut current_host {
                         let val = e.unescape()?.into_owned();
+                        let mut hp = empty_host_property();
+                        hp.name = Some(tag.clone());
+                        hp.value = Some(val.clone());
+                        current_host_properties.push(hp);
                         if patch_re.is_match(tag) {
                             let mut patch = empty_patch();
                             patch.name = Some(tag.clone());
@@ -147,13 +171,39 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                 b"tag" => {
                     current_tag = None;
                 }
+                b"plugin_output" => {
+                    in_plugin_output = false;
+                    if let Some(idx) = current_item_index {
+                        report.items[idx].plugin_output = Some(plugin_output_buf.clone());
+                        if report.items[idx].plugin_id == Some(19506) {
+                            for mut svc in parse_services(&plugin_output_buf) {
+                                svc.item_id = Some(idx as i32);
+                                current_service_desc.push(svc);
+                            }
+                        }
+                    }
+                }
+                b"ReportItem" => {
+                    current_item_index = None;
+                }
                 b"ReportHost" => {
                     if let Some(host) = current_host.take() {
                         report.hosts.push(host);
                         let host_index = (report.hosts.len() - 1) as i32;
+                        for idx in &current_host_item_indices {
+                            report.items[*idx].host_id = Some(host_index);
+                        }
                         for mut patch in current_patches.drain(..) {
                             patch.host_id = Some(host_index);
                             report.patches.push(patch);
+                        }
+                        for mut hp in current_host_properties.drain(..) {
+                            hp.host_id = Some(host_index);
+                            report.host_properties.push(hp);
+                        }
+                        for mut sd in current_service_desc.drain(..) {
+                            sd.host_id = Some(host_index);
+                            report.service_descriptions.push(sd);
                         }
                     }
                 }
@@ -202,6 +252,35 @@ mod tests {
         assert_eq!(report.patches.len(), 1);
         assert_eq!(report.patches[0].name.as_deref(), Some("MS12-001"));
         assert_eq!(report.patches[0].value.as_deref(), Some("KB123456"));
+    }
+
+    #[test]
+    fn parses_host_properties_and_services() {
+        let path = std::path::Path::new("tests/fixtures/scaninfo.nessus");
+        let report = parse_file(path).expect("parse scaninfo");
+        assert_eq!(report.hosts.len(), 1);
+        assert_eq!(report.host_properties.len(), 2);
+        assert_eq!(report.service_descriptions.len(), 2);
+        // host properties linked
+        for hp in &report.host_properties {
+            assert_eq!(hp.host_id, Some(0));
+        }
+        // service descriptions parsed
+        let names: Vec<_> = report
+            .service_descriptions
+            .iter()
+            .filter_map(|s| s.name.clone())
+            .collect();
+        assert!(names.contains(&"ssh".to_string()));
+        assert!(names.contains(&"http".to_string()));
+        // item plugin output captured
+        assert!(
+            report.items[0]
+                .plugin_output
+                .as_ref()
+                .unwrap()
+                .contains("Credentialed Checks")
+        );
     }
 }
 
@@ -315,4 +394,48 @@ fn empty_patch() -> Patch {
         user_id: None,
         engagement_id: None,
     }
+}
+
+fn empty_host_property() -> HostProperty {
+    HostProperty {
+        id: 0,
+        host_id: None,
+        name: None,
+        value: None,
+        user_id: None,
+        engagement_id: None,
+    }
+}
+
+fn empty_service_description() -> ServiceDescription {
+    ServiceDescription {
+        id: 0,
+        host_id: None,
+        item_id: None,
+        name: None,
+        port: None,
+        protocol: None,
+        description: None,
+        user_id: None,
+        engagement_id: None,
+    }
+}
+
+fn parse_services(output: &str) -> Vec<ServiceDescription> {
+    let re = Regex::new(r"(?m)^(?P<port>\d+)/(?P<proto>\w+)\s+\w+\s+(?P<name>[\w\-\.]+)").unwrap();
+    let mut services = Vec::new();
+    for caps in re.captures_iter(output) {
+        let mut svc = empty_service_description();
+        if let Ok(port) = caps["port"].parse::<i32>() {
+            svc.port = Some(port);
+        }
+        if let Some(proto) = caps.name("proto") {
+            svc.protocol = Some(proto.as_str().to_string());
+        }
+        if let Some(name) = caps.name("name") {
+            svc.name = Some(name.as_str().to_string());
+        }
+        services.push(svc);
+    }
+    services
 }

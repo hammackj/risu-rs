@@ -1,0 +1,16 @@
+<NessusClientData_v2 version="2.0">
+  <ReportHost name="192.168.0.1">
+    <HostProperties>
+      <tag name="host-ip">192.168.0.1</tag>
+      <tag name="Credentialed_Scan">true</tag>
+    </HostProperties>
+    <ReportItem pluginID="19506" port="0" svc_name="" protocol="tcp" severity="0" pluginName="Nessus Scan Information">
+      <plugin_output>
+Scanner IP: 10.0.0.5
+Credentialed Checks: yes
+22/tcp open ssh
+80/tcp open http
+      </plugin_output>
+    </ReportItem>
+  </ReportHost>
+</NessusClientData_v2>

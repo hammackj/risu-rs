@@ -13,6 +13,7 @@ use crate::{graphs, parser::NessusReport, renderer::Renderer};
 
 pub mod create;
 pub mod helpers;
+pub mod scan_helper;
 
 /// Trait implemented by report templates.
 pub trait Template {

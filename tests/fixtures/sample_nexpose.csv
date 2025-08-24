@@ -1,0 +1,4 @@
+ip,plugin_id,plugin_name,port,protocol,severity
+10.0.0.1,1000,Sample Vuln,443,tcp,3
+10.0.0.1,1001,Another Vuln,80,tcp,2
+10.0.0.2,1000,Sample Vuln,22,tcp,3

@@ -7,6 +7,8 @@ pub enum Error {
     #[error(transparent)]
     Xml(#[from] quick_xml::Error),
     #[error(transparent)]
+    Csv(#[from] csv::Error),
+    #[error(transparent)]
     Database(#[from] diesel::result::Error),
     #[error(transparent)]
     Connection(#[from] diesel::ConnectionError),

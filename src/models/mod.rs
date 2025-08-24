@@ -4,15 +4,23 @@
 //! by the parser and CLI. Only a subset of the original Ruby models are
 //! implemented at the moment.
 
+pub mod policy;
+pub mod family_selection;
+pub mod individual_plugin_selection;
+pub mod plugins_preference;
+pub mod server_preference;
+
+pub use family_selection::FamilySelection;
+pub use individual_plugin_selection::IndividualPluginSelection;
+pub use plugins_preference::PluginsPreference;
+pub use policy::Policy;
+pub use server_preference::ServerPreference;
+
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::net::IpAddr;
 
-use crate::schema::{
-    nessus_family_selections, nessus_hosts, nessus_individual_plugin_selections, nessus_items,
-    nessus_patches, nessus_plugins, nessus_plugins_preferences, nessus_policies,
-    nessus_server_preferences,
-};
+use crate::schema::{nessus_hosts, nessus_items, nessus_patches, nessus_plugins};
 
 #[derive(Debug, Queryable, Identifiable)]
 #[diesel(table_name = nessus_hosts)]
@@ -150,31 +158,6 @@ pub struct Plugin {
     pub policy_id: Option<i32>,
 }
 
-#[derive(Debug, Queryable, Identifiable, Associations)]
-#[diesel(belongs_to(Host, foreign_key = host_id))]
-#[diesel(table_name = nessus_patches)]
-pub struct Patch {
-    pub id: i32,
-    pub host_id: Option<i32>,
-    pub name: Option<String>,
-    pub value: Option<String>,
-    pub user_id: Option<i32>,
-    pub engagement_id: Option<i32>,
-}
-
-impl Default for Patch {
-    fn default() -> Self {
-        Self {
-            id: 0,
-            host_id: None,
-            name: None,
-            value: None,
-            user_id: None,
-            engagement_id: None,
-        }
-    }
-}
-
 impl Default for Plugin {
     fn default() -> Self {
         Self {
@@ -228,122 +211,27 @@ impl Default for Plugin {
     }
 }
 
-#[derive(Debug, Queryable, Identifiable)]
-#[diesel(table_name = nessus_policies)]
-pub struct Policy {
-    pub id: i32,
-    pub name: Option<String>,
-    pub comments: Option<String>,
-    pub owner: Option<String>,
-    pub visibility: Option<String>,
-}
-
-impl Default for Policy {
-    fn default() -> Self {
-        Self {
-            id: 0,
-            name: None,
-            comments: None,
-            owner: None,
-            visibility: None,
-        }
-    }
-}
-
 #[derive(Debug, Queryable, Identifiable, Associations)]
-#[diesel(belongs_to(Policy))]
-#[diesel(table_name = nessus_family_selections)]
-pub struct FamilySelection {
+#[diesel(belongs_to(Host, foreign_key = host_id))]
+#[diesel(table_name = nessus_patches)]
+pub struct Patch {
     pub id: i32,
-    pub policy_id: Option<i32>,
-    pub family_name: Option<String>,
-    pub status: Option<String>,
-}
-
-impl Default for FamilySelection {
-    fn default() -> Self {
-        Self {
-            id: 0,
-            policy_id: None,
-            family_name: None,
-            status: None,
-        }
-    }
-}
-
-#[derive(Debug, Queryable, Identifiable, Associations)]
-#[diesel(belongs_to(Policy))]
-#[diesel(table_name = nessus_individual_plugin_selections)]
-pub struct IndividualPluginSelection {
-    pub id: i32,
-    pub policy_id: Option<i32>,
-    pub plugin_id: Option<i32>,
-    pub plugin_name: Option<String>,
-    pub family: Option<String>,
-    pub status: Option<String>,
-}
-
-impl Default for IndividualPluginSelection {
-    fn default() -> Self {
-        Self {
-            id: 0,
-            policy_id: None,
-            plugin_id: None,
-            plugin_name: None,
-            family: None,
-            status: None,
-        }
-    }
-}
-
-#[derive(Debug, Queryable, Identifiable, Associations)]
-#[diesel(belongs_to(Policy))]
-#[diesel(table_name = nessus_plugins_preferences)]
-pub struct PluginsPreference {
-    pub id: i32,
-    pub policy_id: Option<i32>,
-    pub plugin_name: Option<String>,
-    pub plugin_id: Option<i32>,
-    pub full_name: Option<String>,
-    pub preference_name: Option<String>,
-    pub preference_type: Option<String>,
-    pub preference_values: Option<String>,
-    pub selected_values: Option<String>,
-}
-
-impl Default for PluginsPreference {
-    fn default() -> Self {
-        Self {
-            id: 0,
-            policy_id: None,
-            plugin_name: None,
-            plugin_id: None,
-            full_name: None,
-            preference_name: None,
-            preference_type: None,
-            preference_values: None,
-            selected_values: None,
-        }
-    }
-}
-
-#[derive(Debug, Queryable, Identifiable, Associations)]
-#[diesel(belongs_to(Policy))]
-#[diesel(table_name = nessus_server_preferences)]
-pub struct ServerPreference {
-    pub id: i32,
-    pub policy_id: Option<i32>,
+    pub host_id: Option<i32>,
     pub name: Option<String>,
     pub value: Option<String>,
+    pub user_id: Option<i32>,
+    pub engagement_id: Option<i32>,
 }
 
-impl Default for ServerPreference {
+impl Default for Patch {
     fn default() -> Self {
         Self {
             id: 0,
-            policy_id: None,
+            host_id: None,
             name: None,
             value: None,
+            user_id: None,
+            engagement_id: None,
         }
     }
 }

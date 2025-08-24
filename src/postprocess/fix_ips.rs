@@ -1,11 +1,14 @@
+use super::{PluginEntry, PostProcess, PostProcessInfo};
 use crate::parser::NessusReport;
-use super::{PostProcess, PostProcessInfo, PluginEntry};
 
 struct FixIps;
 
 impl PostProcess for FixIps {
     fn info(&self) -> PostProcessInfo {
-        PostProcessInfo { name: "fix_ips", order: 10 }
+        PostProcessInfo {
+            name: "fix_ips",
+            order: 10,
+        }
     }
 
     fn run(&self, report: &mut NessusReport) {

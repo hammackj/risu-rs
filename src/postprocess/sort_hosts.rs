@@ -1,13 +1,16 @@
 use std::net::IpAddr;
 
+use super::{PluginEntry, PostProcess, PostProcessInfo};
 use crate::parser::NessusReport;
-use super::{PostProcess, PostProcessInfo, PluginEntry};
 
 struct SortHosts;
 
 impl PostProcess for SortHosts {
     fn info(&self) -> PostProcessInfo {
-        PostProcessInfo { name: "sort_hosts", order: 20 }
+        PostProcessInfo {
+            name: "sort_hosts",
+            order: 20,
+        }
     }
 
     fn run(&self, report: &mut NessusReport) {

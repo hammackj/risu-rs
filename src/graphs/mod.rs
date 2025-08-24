@@ -111,7 +111,10 @@ pub fn top_vulnerabilities(
         .draw()?;
 
     chart.draw_series(data.iter().enumerate().map(|(i, (_, c))| {
-        Rectangle::new([(i as i32, 0), (i as i32 + 1, *c)], Palette99::pick(i).filled())
+        Rectangle::new(
+            [(i as i32, 0), (i as i32 + 1, *c)],
+            Palette99::pick(i).filled(),
+        )
     }))?;
 
     root.present()?;

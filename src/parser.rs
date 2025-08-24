@@ -4,6 +4,7 @@ use std::path::Path;
 
 use quick_xml::Reader;
 use quick_xml::events::Event;
+use tracing::info;
 
 use crate::models::{Host, Item, Plugin};
 
@@ -17,8 +18,8 @@ pub struct NessusReport {
 }
 
 /// Validate and parse a Nessus XML file into ORM models.
-pub fn parse_file(path: &Path) -> Result<NessusReport, Box<dyn std::error::Error>> {
-    println!("Parsing file: {}", path.display());
+pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
+    info!("Parsing file: {}", path.display());
 
     let mut reader = Reader::from_file(path)?;
     reader.trim_text(true);

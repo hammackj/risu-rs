@@ -8,17 +8,19 @@
 
 mod banner;
 mod config;
+mod error;
 mod graphs;
 mod migrate;
 mod models;
 mod parser;
+mod plugin_index;
 mod postprocess;
 mod renderer;
 mod schema;
 mod template;
-mod plugin_index;
 
 use clap::{Parser, Subcommand};
+use tracing::error;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -26,6 +28,12 @@ struct Cli {
     /// Suppress the startup banner
     #[arg(long = "no-banner")]
     _no_banner: bool,
+    /// Log level (error, warn, info, debug, trace)
+    #[arg(long, default_value = "info")]
+    log_level: String,
+    /// Log output format (plain or json)
+    #[arg(long, value_parser = ["plain", "json"], default_value = "plain")]
+    log_format: String,
     #[command(subcommand)]
     command: Commands,
 }
@@ -65,83 +73,81 @@ enum Commands {
 }
 
 fn main() {
+    if let Err(e) = run() {
+        error!("{e}");
+        std::process::exit(1);
+    }
+}
+
+fn run() -> Result<(), error::Error> {
     let args: Vec<String> = std::env::args().collect();
     if !args.iter().any(|a| a == "--no-banner") {
         println!("{}", banner::random());
     }
     let cli = Cli::parse_from(args);
 
+    init_logging(&cli.log_level, &cli.log_format);
+
     match cli.command {
         Commands::CreateConfig => {
             let path = std::path::Path::new("config.yml");
-            if let Err(e) = config::create_config(path) {
-                eprintln!("failed to write config: {e}");
-            }
+            config::create_config(path)?;
         }
         Commands::Migrate {
             create_tables,
             drop_tables,
         } => {
-            migrate::run(create_tables, drop_tables);
+            migrate::run(create_tables, drop_tables)?;
         }
         Commands::Parse {
             file,
             template: tmpl_name,
             output,
             post_process,
-        } => match parser::parse_file(&file) {
-            Ok(mut report) => {
-                if post_process {
-                    postprocess::process(&mut report);
-                }
+        } => {
+            let mut report = parser::parse_file(&file)?;
+            if post_process {
+                postprocess::process(&mut report);
+            }
 
-                let cfg =
-                    config::load_config(std::path::Path::new("config.yml")).unwrap_or_default();
-                let paths = cfg
-                    .template_paths
-                    .iter()
-                    .map(std::path::PathBuf::from)
-                    .collect();
-                let mut manager = template::TemplateManager::new(paths);
-                manager.register(Box::new(template::SimpleTemplate));
-                if let Err(e) = manager.load_templates() {
-                    eprintln!("failed to load templates: {e}");
-                }
-                match manager.get(&tmpl_name) {
-                    Some(tmpl) => match std::fs::File::create(&output) {
-                        Ok(mut f) => {
-                            let mut renderer: Box<dyn renderer::Renderer> =
-                                match output.extension().and_then(|s| s.to_str()) {
-                                    Some("csv") => Box::new(renderer::CsvRenderer::new()),
-                                    _ => Box::new(renderer::PdfRenderer::new("Report")),
-                                };
-                            if let Err(e) = tmpl.generate(&report, renderer.as_mut()) {
-                                eprintln!("failed to generate output: {e}");
-                            } else if let Err(e) = renderer.save(&mut f) {
-                                eprintln!("failed to save output: {e}");
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("failed to open output file: {e}");
-                        }
-                    },
-                    None => {
-                        eprintln!(
-                            "unknown template '{}'. available: {:?}",
-                            tmpl_name,
-                            manager.available()
-                        );
-                    }
-                }
-            }
-            Err(e) => {
-                eprintln!("failed to parse file: {e}");
-            }
-        },
-        Commands::PluginIndex { dir } => {
-            if let Err(e) = plugin_index::run(&dir) {
-                eprintln!("failed to index plugins: {e}");
-            }
+            let cfg = config::load_config(std::path::Path::new("config.yml")).unwrap_or_default();
+            let paths = cfg
+                .template_paths
+                .iter()
+                .map(std::path::PathBuf::from)
+                .collect();
+            let mut manager = template::TemplateManager::new(paths);
+            manager.register(Box::new(template::SimpleTemplate));
+            manager.load_templates().map_err(error::Error::Template)?;
+            let tmpl = manager.get(&tmpl_name).ok_or_else(|| {
+                error::Error::Config(format!(
+                    "unknown template '{tmpl_name}'. available: {:?}",
+                    manager.available()
+                ))
+            })?;
+            let mut f = std::fs::File::create(&output)?;
+            let mut renderer: Box<dyn renderer::Renderer> =
+                match output.extension().and_then(|s| s.to_str()) {
+                    Some("csv") => Box::new(renderer::CsvRenderer::new()),
+                    _ => Box::new(renderer::PdfRenderer::new("Report")),
+                };
+            tmpl.generate(&report, renderer.as_mut())
+                .map_err(error::Error::Template)?;
+            renderer.save(&mut f).map_err(error::Error::Template)?;
         }
+        Commands::PluginIndex { dir } => {
+            plugin_index::run(&dir)?;
+        }
+    }
+    Ok(())
+}
+
+fn init_logging(level: &str, format: &str) {
+    let filter = tracing_subscriber::EnvFilter::try_new(level)
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
+    let builder = tracing_subscriber::fmt().with_env_filter(filter);
+    match format {
+        "json" => builder.json().init(),
+        _ => builder.init(),
     }
 }

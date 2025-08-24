@@ -18,6 +18,55 @@ diesel::table! {
 }
 
 diesel::table! {
+    nessus_policies (id) {
+        id -> Integer,
+        name -> Nullable<Text>,
+        comments -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    nessus_policy_plugins (id) {
+        id -> Integer,
+        policy_id -> Nullable<Integer>,
+        plugin_id -> Nullable<Integer>,
+        plugin_name -> Nullable<Text>,
+        family_name -> Nullable<Text>,
+        status -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    nessus_family_selections (id) {
+        id -> Integer,
+        policy_id -> Nullable<Integer>,
+        family_name -> Nullable<Text>,
+        status -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    nessus_plugin_preferences (id) {
+        id -> Integer,
+        policy_id -> Nullable<Integer>,
+        plugin_id -> Nullable<Integer>,
+        fullname -> Nullable<Text>,
+        preference_name -> Nullable<Text>,
+        preference_type -> Nullable<Text>,
+        selected_value -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    nessus_server_preferences (id) {
+        id -> Integer,
+        policy_id -> Nullable<Integer>,
+        name -> Nullable<Text>,
+        value -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
     nessus_host_properties (id) {
         id -> Integer,
         host_id -> Nullable<Integer>,
@@ -164,4 +213,9 @@ diesel::allow_tables_to_appear_in_same_query!(
     nessus_service_descriptions,
     nessus_plugin_metadata,
     nessus_patches,
+    nessus_policies,
+    nessus_policy_plugins,
+    nessus_family_selections,
+    nessus_plugin_preferences,
+    nessus_server_preferences,
 );

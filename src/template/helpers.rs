@@ -7,7 +7,7 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 
 use crate::graphs::{TopVulnGraph, WindowsOsGraph};
-use crate::models::{Attachment, HostProperty};
+use crate::models::{Attachment, FamilySelection, HostProperty, PolicyPlugin};
 
 /// Produce a message indicating the operating system is unsupported.
 pub fn unsupported_os(os: &str) -> String {
@@ -89,6 +89,43 @@ pub fn host_properties(
         .load::<HostProperty>(conn)
 }
 
+/// Fetch enabled plugin families for a policy.
+pub fn enabled_families(
+    conn: &mut SqliteConnection,
+    policy_id_val: i32,
+) -> QueryResult<Vec<FamilySelection>> {
+    use crate::schema::nessus_family_selections::dsl::*;
+    nessus_family_selections
+        .filter(policy_id.eq(policy_id_val).and(status.eq("enabled")))
+        .load::<FamilySelection>(conn)
+}
+
+/// Fetch enabled plugins for a policy.
+pub fn enabled_plugins(
+    conn: &mut SqliteConnection,
+    policy_id_val: i32,
+) -> QueryResult<Vec<PolicyPlugin>> {
+    use crate::schema::nessus_policy_plugins::dsl::*;
+    nessus_policy_plugins
+        .filter(policy_id.eq(policy_id_val).and(status.eq("enabled")))
+        .load::<PolicyPlugin>(conn)
+}
+
+/// Fetch a server preference by name for a policy.
+pub fn server_preference(
+    conn: &mut SqliteConnection,
+    policy_id_val: i32,
+    pref_name: &str,
+) -> QueryResult<Option<String>> {
+    use crate::schema::nessus_server_preferences::dsl::*;
+    nessus_server_preferences
+        .filter(policy_id.eq(policy_id_val).and(name.eq(pref_name)))
+        .select(value)
+        .first::<Option<String>>(conn)
+        .optional()
+        .map(|r| r.flatten())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -137,6 +174,10 @@ mod tests {
 
     use crate::migrate::MIGRATIONS;
     use crate::schema::{nessus_host_properties, nessus_hosts};
+    use crate::schema::{
+        nessus_family_selections, nessus_policy_plugins, nessus_policies,
+        nessus_server_preferences,
+    };
     use diesel::sqlite::SqliteConnection;
     use diesel_migrations::MigrationHarness;
 
@@ -150,6 +191,37 @@ mod tests {
     #[diesel(table_name = nessus_host_properties)]
     struct NewHostProperty<'a> {
         host_id: Option<i32>,
+        name: Option<&'a str>,
+        value: Option<&'a str>,
+    }
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_policies)]
+    struct NewPolicy<'a> {
+        name: Option<&'a str>,
+        comments: Option<&'a str>,
+    }
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_policy_plugins)]
+    struct NewPolicyPlugin<'a> {
+        policy_id: Option<i32>,
+        plugin_id: Option<i32>,
+        status: Option<&'a str>,
+    }
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_family_selections)]
+    struct NewFamilySelection<'a> {
+        policy_id: Option<i32>,
+        family_name: Option<&'a str>,
+        status: Option<&'a str>,
+    }
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_server_preferences)]
+    struct NewServerPreference<'a> {
+        policy_id: Option<i32>,
         name: Option<&'a str>,
         value: Option<&'a str>,
     }
@@ -182,5 +254,52 @@ mod tests {
         let props = host_properties(&mut conn, 1).unwrap();
         assert_eq!(props.len(), 1);
         assert_eq!(props[0].name.as_deref(), Some("foo"));
+    }
+
+    #[test]
+    fn policy_helpers_query() {
+        let mut conn = setup();
+        diesel::insert_into(nessus_policies::table)
+            .values(&NewPolicy {
+                name: Some("default"),
+                comments: None,
+            })
+            .execute(&mut conn)
+            .unwrap();
+        diesel::insert_into(nessus_policy_plugins::table)
+            .values(&NewPolicyPlugin {
+                policy_id: Some(1),
+                plugin_id: Some(1),
+                status: Some("enabled"),
+            })
+            .execute(&mut conn)
+            .unwrap();
+        diesel::insert_into(nessus_family_selections::table)
+            .values(&NewFamilySelection {
+                policy_id: Some(1),
+                family_name: Some("General"),
+                status: Some("enabled"),
+            })
+            .execute(&mut conn)
+            .unwrap();
+        diesel::insert_into(nessus_server_preferences::table)
+            .values(&NewServerPreference {
+                policy_id: Some(1),
+                name: Some("opt"),
+                value: Some("1"),
+            })
+            .execute(&mut conn)
+            .unwrap();
+
+        let fams = enabled_families(&mut conn, 1).unwrap();
+        assert_eq!(fams.len(), 1);
+        assert_eq!(fams[0].family_name.as_deref(), Some("General"));
+
+        let plugs = enabled_plugins(&mut conn, 1).unwrap();
+        assert_eq!(plugs.len(), 1);
+        assert_eq!(plugs[0].plugin_id, Some(1));
+
+        let pref = server_preference(&mut conn, 1, "opt").unwrap();
+        assert_eq!(pref.as_deref(), Some("1"));
     }
 }

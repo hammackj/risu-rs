@@ -7,10 +7,20 @@
 pub mod attachment;
 pub mod host_property;
 pub mod service_description;
+pub mod policy;
+pub mod family_selection;
+pub mod plugin_preference;
+pub mod policy_plugin;
+pub mod server_preference;
 
 pub use attachment::Attachment;
 pub use host_property::HostProperty;
 pub use service_description::ServiceDescription;
+pub use policy::Policy;
+pub use family_selection::FamilySelection;
+pub use plugin_preference::PluginPreference;
+pub use policy_plugin::PolicyPlugin;
+pub use server_preference::ServerPreference;
 
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
@@ -264,7 +274,6 @@ mod tests {
     use super::*;
     use crate::migrate::MIGRATIONS;
     use crate::schema::nessus_hosts;
-    use diesel::prelude::*;
     use diesel::sqlite::SqliteConnection;
     use diesel_migrations::MigrationHarness;
 

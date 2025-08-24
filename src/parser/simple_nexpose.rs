@@ -5,7 +5,7 @@ use csv::Reader;
 use serde::Deserialize;
 
 use crate::error::Error;
-use crate::models::{Host, Item, Plugin};
+use crate::models::{Host, Item, Plugin, ServiceDescription};
 
 /// Parsed representation of a simplified Nexpose CSV export.
 #[derive(Default)]
@@ -13,6 +13,7 @@ pub struct SimpleNexpose {
     pub hosts: Vec<Host>,
     pub items: Vec<Item>,
     pub plugins: Vec<Plugin>,
+    pub service_descriptions: Vec<ServiceDescription>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -75,6 +76,7 @@ impl From<SimpleNexpose> for super::NessusReport {
             patches: Vec::new(),
             attachments: Vec::new(),
             host_properties: Vec::new(),
+            service_descriptions: s.service_descriptions,
         }
     }
 }

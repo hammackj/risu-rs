@@ -1,0 +1,1 @@
+DROP TABLE nessus_service_descriptions;

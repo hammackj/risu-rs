@@ -6,15 +6,19 @@
 
 pub mod attachment;
 pub mod host_property;
+pub mod service_description;
 
 pub use attachment::Attachment;
 pub use host_property::HostProperty;
+pub use service_description::ServiceDescription;
 
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::net::IpAddr;
 
-use crate::schema::{nessus_hosts, nessus_items, nessus_patches, nessus_plugins};
+use crate::schema::{
+    nessus_hosts, nessus_items, nessus_patches, nessus_plugins,
+};
 
 #[derive(Debug, Queryable, Identifiable)]
 #[diesel(table_name = nessus_hosts)]

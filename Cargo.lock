@@ -1327,9 +1327,11 @@ dependencies = [
  "printpdf",
  "quick-xml",
  "rand",
+ "regex",
  "serde",
  "serde_yaml",
  "tempfile",
+ "walkdir",
 ]
 
 [[package]]

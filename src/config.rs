@@ -1,3 +1,14 @@
+//! Loading and writing application configuration.
+//!
+//! Configuration is stored in a simple YAML file:
+//!
+//! ```yaml
+//! database_url: sqlite://:memory:
+//! log_level: info
+//! template_paths:
+//!   - ./templates
+//! ```
+
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 
@@ -62,4 +73,3 @@ pub fn load_config(path: &Path) -> Result<Config, Box<dyn std::error::Error>> {
 
     Ok(cfg)
 }
-

@@ -1,8 +1,15 @@
+//! Template loading and rendering infrastructure.
+//!
+//! Implement the [`Template`] trait to create new report generators. Templates
+//! can be registered at runtime by placing compiled dynamic libraries in one of
+//! the configured template paths. The [`TemplateManager`] handles discovery and
+//! selection of templates.
+
 use std::{collections::HashMap, error::Error, fs, path::PathBuf};
 
 use libloading::{Library, Symbol};
 
-use crate::{parser::NessusReport, renderer::Renderer, graphs};
+use crate::{graphs, parser::NessusReport, renderer::Renderer};
 
 /// Trait implemented by report templates.
 pub trait Template {

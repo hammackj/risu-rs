@@ -1,3 +1,4 @@
+pub mod assets;
 pub mod template;
 pub mod host_summary;
 

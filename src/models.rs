@@ -11,6 +11,7 @@ use std::net::IpAddr;
 use crate::schema::{
     nessus_hosts, nessus_items, nessus_patches, nessus_plugins, nessus_references,
 };
+use crate::parser::NessusReport;
 
 #[derive(Debug, Queryable, Identifiable)]
 #[diesel(table_name = nessus_hosts)]
@@ -247,6 +248,90 @@ impl Default for Plugin {
     }
 }
 
+impl Item {
+    /// All references associated with this item via its plugin ID.
+    pub fn references<'a>(&self, report: &'a NessusReport) -> Vec<&'a Reference> {
+        match self.plugin_id {
+            Some(pid) => report
+                .references
+                .iter()
+                .filter(|r| r.plugin_id == Some(pid))
+                .collect(),
+            None => Vec::new(),
+        }
+    }
+
+    /// Convenience helper returning CVE identifiers for this item.
+    pub fn cves<'a>(&self, report: &'a NessusReport) -> Vec<&'a str> {
+        self.references(report)
+            .into_iter()
+            .filter_map(|r| {
+                if r.source.as_deref() == Some("CVE") {
+                    r.reference.as_deref()
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Convenience helper returning BID identifiers for this item.
+    pub fn bids<'a>(&self, report: &'a NessusReport) -> Vec<&'a str> {
+        self.references(report)
+            .into_iter()
+            .filter_map(|r| {
+                if r.source.as_deref() == Some("BID") {
+                    r.reference.as_deref()
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+}
+
+impl Plugin {
+    /// All references for this plugin.
+    pub fn references<'a>(&self, report: &'a NessusReport) -> Vec<&'a Reference> {
+        match self.plugin_id {
+            Some(pid) => report
+                .references
+                .iter()
+                .filter(|r| r.plugin_id == Some(pid))
+                .collect(),
+            None => Vec::new(),
+        }
+    }
+
+    /// Convenience helper returning CVE identifiers for this plugin.
+    pub fn cves<'a>(&self, report: &'a NessusReport) -> Vec<&'a str> {
+        self.references(report)
+            .into_iter()
+            .filter_map(|r| {
+                if r.source.as_deref() == Some("CVE") {
+                    r.reference.as_deref()
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Convenience helper returning BID identifiers for this plugin.
+    pub fn bids<'a>(&self, report: &'a NessusReport) -> Vec<&'a str> {
+        self.references(report)
+            .into_iter()
+            .filter_map(|r| {
+                if r.source.as_deref() == Some("BID") {
+                    r.reference.as_deref()
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+}
+
 impl Host {
     pub fn sorted(conn: &mut SqliteConnection) -> QueryResult<Vec<Host>> {
         use crate::schema::nessus_hosts::dsl::*;
@@ -277,7 +362,6 @@ mod tests {
     use super::*;
     use crate::migrate::MIGRATIONS;
     use crate::schema::nessus_hosts;
-    use diesel::prelude::*;
     use diesel::sqlite::SqliteConnection;
     use diesel_migrations::MigrationHarness;
 

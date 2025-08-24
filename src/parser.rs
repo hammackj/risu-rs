@@ -10,7 +10,9 @@ use quick_xml::Reader;
 use quick_xml::events::Event;
 use tracing::{debug, info};
 
-use crate::models::{Attachment, Host, HostProperty, Item, Patch, Plugin};
+use crate::models::{
+    Attachment, Host, HostProperty, Item, Patch, Plugin, ServiceDescription,
+};
 use base64::{Engine, engine::general_purpose};
 use regex::Regex;
 
@@ -24,6 +26,7 @@ pub struct NessusReport {
     pub patches: Vec<Patch>,
     pub attachments: Vec<Attachment>,
     pub host_properties: Vec<HostProperty>,
+    pub service_descriptions: Vec<ServiceDescription>,
 }
 
 /// Detect file type and parse accordingly.
@@ -56,6 +59,10 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
     let mut current_tag: Option<String> = None;
     let mut current_patches: Vec<Patch> = Vec::new();
     let mut current_host_properties: Vec<HostProperty> = Vec::new();
+    let mut current_service_descriptions: Vec<ServiceDescription> = Vec::new();
+    let mut pending_service_description: Option<ServiceDescription> = None;
+    let mut current_plugin_output: Option<String> = None;
+    let mut current_item_index: Option<i32> = None;
     let base_dir: PathBuf = path.parent().unwrap_or(Path::new(".")).to_path_buf();
 
     struct PendingAttachment {
@@ -150,6 +157,17 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         }
                     }
                     report.items.push(item);
+                    current_item_index = Some((report.items.len() - 1) as i32);
+                    if let Some(pid) = report.items.last().and_then(|it| it.plugin_id) {
+                        if pid == 22964 {
+                            let mut sd = ServiceDescription::default();
+                            sd.item_id = current_item_index;
+                            sd.port = report.items.last().and_then(|it| it.port);
+                            sd.svc_name = report.items.last().and_then(|it| it.svc_name.clone());
+                            sd.protocol = report.items.last().and_then(|it| it.protocol.clone());
+                            pending_service_description = Some(sd);
+                        }
+                    }
                 }
                 b"attachment" => {
                     let mut name = String::new();
@@ -172,6 +190,9 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         data: String::new(),
                     });
                 }
+                b"plugin_output" => {
+                    current_plugin_output = Some(String::new());
+                }
                 _ => {
                     unknown_tags.insert(String::from_utf8_lossy(e.name().as_ref()).to_string());
                 }
@@ -179,6 +200,8 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
             Event::Text(e) => {
                 if let Some(att) = &mut current_attachment {
                     att.data.push_str(&e.unescape()?.into_owned());
+                } else if let Some(out) = &mut current_plugin_output {
+                    out.push_str(&e.unescape()?.into_owned());
                 } else if let Some(tag) = &current_tag {
                     let val = e.unescape()?.into_owned();
                     if let Some(host) = &mut current_host {
@@ -207,6 +230,24 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                 b"tag" => {
                     current_tag = None;
                 }
+                b"plugin_output" => {
+                    if let Some(text) = current_plugin_output.take() {
+                        if let Some(idx) = current_item_index {
+                            if let Some(item) = report.items.get_mut(idx as usize) {
+                                item.plugin_output = Some(text.clone());
+                                if let Some(sd) = &mut pending_service_description {
+                                    sd.description = Some(text);
+                                }
+                            }
+                        }
+                    }
+                }
+                b"ReportItem" => {
+                    if let Some(sd) = pending_service_description.take() {
+                        current_service_descriptions.push(sd);
+                    }
+                    current_item_index = None;
+                }
                 b"ReportHost" => {
                     if let Some(host) = current_host.take() {
                         report.hosts.push(host);
@@ -218,6 +259,10 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         for mut prop in current_host_properties.drain(..) {
                             prop.host_id = Some(host_index);
                             report.host_properties.push(prop);
+                        }
+                        for mut sd in current_service_descriptions.drain(..) {
+                            sd.host_id = Some(host_index);
+                            report.service_descriptions.push(sd);
                         }
                     }
                 }
@@ -336,6 +381,26 @@ mod tests {
         assert_eq!(report.hosts.len(), 2);
         assert_eq!(report.items.len(), 3);
         assert_eq!(report.plugins.len(), 2);
+    }
+
+    #[test]
+    fn parses_service_descriptions() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("svc.nessus");
+        let xml = r#"<NessusClientData_v2>
+<ReportHost name='h'>
+<HostProperties></HostProperties>
+<ReportItem pluginID='22964' port='80' svc_name='http' protocol='tcp' severity='0' pluginName='Service Detection'>
+<plugin_output>Apache httpd</plugin_output>
+</ReportItem>
+</ReportHost>
+</NessusClientData_v2>"#;
+        std::fs::write(&file_path, xml).unwrap();
+        let report = parse_file(&file_path).expect("parse");
+        assert_eq!(report.service_descriptions.len(), 1);
+        assert_eq!(report.service_descriptions[0].description.as_deref(), Some("Apache httpd"));
+        assert_eq!(report.service_descriptions[0].port, Some(80));
+        assert_eq!(report.service_descriptions[0].svc_name.as_deref(), Some("http"));
     }
 }
 

@@ -131,6 +131,58 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    nessus_policies (id) {
+        id -> Integer,
+        name -> Nullable<Text>,
+        comments -> Nullable<Text>,
+        owner -> Nullable<Text>,
+        visibility -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    nessus_family_selections (id) {
+        id -> Integer,
+        policy_id -> Nullable<Integer>,
+        family_name -> Nullable<Text>,
+        status -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    nessus_individual_plugin_selections (id) {
+        id -> Integer,
+        policy_id -> Nullable<Integer>,
+        plugin_id -> Nullable<Integer>,
+        plugin_name -> Nullable<Text>,
+        family -> Nullable<Text>,
+        status -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    nessus_plugins_preferences (id) {
+        id -> Integer,
+        policy_id -> Nullable<Integer>,
+        plugin_name -> Nullable<Text>,
+        plugin_id -> Nullable<Integer>,
+        full_name -> Nullable<Text>,
+        preference_name -> Nullable<Text>,
+        preference_type -> Nullable<Text>,
+        preference_values -> Nullable<Text>,
+        selected_values -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    nessus_server_preferences (id) {
+        id -> Integer,
+        policy_id -> Nullable<Integer>,
+        name -> Nullable<Text>,
+        value -> Nullable<Text>,
+    }
+}
 diesel::allow_tables_to_appear_in_same_query!(
     nessus_hosts,
     nessus_host_properties,
@@ -138,4 +190,9 @@ diesel::allow_tables_to_appear_in_same_query!(
     nessus_plugins,
     nessus_plugin_metadata,
     nessus_patches,
+    nessus_policies,
+    nessus_family_selections,
+    nessus_individual_plugin_selections,
+    nessus_plugins_preferences,
+    nessus_server_preferences,
 );

@@ -5,9 +5,13 @@ use std::path::Path;
 
 use quick_xml::Reader;
 use quick_xml::events::Event;
+use std::io::BufRead;
 use tracing::{debug, info};
 
-use crate::models::{Host, Item, Patch, Plugin};
+use crate::models::{
+    FamilySelection, Host, IndividualPluginSelection, Item, Patch, Plugin, PluginsPreference,
+    Policy, ServerPreference,
+};
 use regex::Regex;
 
 /// Parsed representation of a Nessus report.
@@ -18,6 +22,11 @@ pub struct NessusReport {
     pub items: Vec<Item>,
     pub plugins: Vec<Plugin>,
     pub patches: Vec<Patch>,
+    pub policies: Vec<Policy>,
+    pub family_selections: Vec<FamilySelection>,
+    pub individual_plugin_selections: Vec<IndividualPluginSelection>,
+    pub plugins_preferences: Vec<PluginsPreference>,
+    pub server_preferences: Vec<ServerPreference>,
 }
 
 /// Validate and parse a Nessus XML file into ORM models.
@@ -54,6 +63,28 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
                                 String::from_utf8_lossy(a.key.as_ref())
                             ));
                         }
+                    }
+                }
+                b"Policy" => {
+                    let (policy, families, individuals, plugin_prefs, server_prefs) =
+                        parse_policy(&mut reader, &mut buf)?;
+                    let policy_index = report.policies.len() as i32;
+                    report.policies.push(policy);
+                    for mut f in families {
+                        f.policy_id = Some(policy_index);
+                        report.family_selections.push(f);
+                    }
+                    for mut i in individuals {
+                        i.policy_id = Some(policy_index);
+                        report.individual_plugin_selections.push(i);
+                    }
+                    for mut p in plugin_prefs {
+                        p.policy_id = Some(policy_index);
+                        report.plugins_preferences.push(p);
+                    }
+                    for mut s in server_prefs {
+                        s.policy_id = Some(policy_index);
+                        report.server_preferences.push(s);
                     }
                 }
                 b"ReportHost" => {
@@ -187,6 +218,170 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
     Ok(report)
 }
 
+fn parse_policy<B: BufRead>(
+    reader: &mut Reader<B>,
+    buf: &mut Vec<u8>,
+) -> Result<
+    (
+        Policy,
+        Vec<FamilySelection>,
+        Vec<IndividualPluginSelection>,
+        Vec<PluginsPreference>,
+        Vec<ServerPreference>,
+    ),
+    crate::error::Error,
+> {
+    let mut policy = empty_policy();
+    let mut families = Vec::new();
+    let mut individuals = Vec::new();
+    let mut plugin_prefs = Vec::new();
+    let mut server_prefs = Vec::new();
+
+    let mut current_tag: Option<String> = None;
+    let mut current_family: Option<FamilySelection> = None;
+    let mut current_individual: Option<IndividualPluginSelection> = None;
+    let mut current_plugin_pref: Option<PluginsPreference> = None;
+    let mut current_server_pref: Option<ServerPreference> = None;
+
+    loop {
+        match reader.read_event_into(buf)? {
+            Event::Start(e) => match e.name().as_ref() {
+                b"policyName" | b"policyComments" | b"policyOwner" | b"visibility" => {
+                    current_tag = Some(String::from_utf8_lossy(e.name().as_ref()).to_string());
+                }
+                b"FamilyItem" => current_family = Some(empty_family_selection()),
+                b"PluginItem" => current_individual = Some(empty_individual_plugin_selection()),
+                b"item" => current_plugin_pref = Some(empty_plugins_preference()),
+                b"preference" => current_server_pref = Some(empty_server_preference()),
+                b"FamilyName" | b"Status" | b"PluginId" | b"PluginName" | b"Family" | b"name"
+                | b"value" | b"pluginName" | b"pluginId" | b"fullName" | b"preferenceName"
+                | b"preferenceType" | b"preferenceValues" | b"selectedValue" => {
+                    current_tag = Some(String::from_utf8_lossy(e.name().as_ref()).to_string());
+                }
+                _ => {}
+            },
+            Event::Text(e) => {
+                if let Some(tag) = &current_tag {
+                    let val = e.unescape()?.into_owned();
+                    match tag.as_str() {
+                        "policyName" => policy.name = Some(val),
+                        "policyComments" => policy.comments = Some(val),
+                        "policyOwner" => policy.owner = Some(val),
+                        "visibility" => policy.visibility = Some(val),
+                        "FamilyName" => {
+                            if let Some(ref mut f) = current_family {
+                                f.family_name = Some(val)
+                            }
+                        }
+                        "Status" => {
+                            if let Some(ref mut f) = current_family {
+                                f.status = Some(val.clone())
+                            }
+                            if let Some(ref mut i) = current_individual {
+                                i.status = Some(val)
+                            }
+                        }
+                        "PluginId" => {
+                            if let Some(ref mut i) = current_individual {
+                                i.plugin_id = val.parse().ok()
+                            }
+                        }
+                        "PluginName" => {
+                            if let Some(ref mut i) = current_individual {
+                                i.plugin_name = Some(val)
+                            }
+                        }
+                        "Family" => {
+                            if let Some(ref mut i) = current_individual {
+                                i.family = Some(val)
+                            }
+                        }
+                        "name" => {
+                            if let Some(ref mut s) = current_server_pref {
+                                s.name = Some(val)
+                            }
+                        }
+                        "value" => {
+                            if let Some(ref mut s) = current_server_pref {
+                                s.value = Some(val)
+                            }
+                        }
+                        "pluginName" => {
+                            if let Some(ref mut p) = current_plugin_pref {
+                                p.plugin_name = Some(val)
+                            }
+                        }
+                        "pluginId" => {
+                            if let Some(ref mut p) = current_plugin_pref {
+                                p.plugin_id = val.parse().ok()
+                            }
+                        }
+                        "fullName" => {
+                            if let Some(ref mut p) = current_plugin_pref {
+                                p.full_name = Some(val)
+                            }
+                        }
+                        "preferenceName" => {
+                            if let Some(ref mut p) = current_plugin_pref {
+                                p.preference_name = Some(val)
+                            }
+                        }
+                        "preferenceType" => {
+                            if let Some(ref mut p) = current_plugin_pref {
+                                p.preference_type = Some(val)
+                            }
+                        }
+                        "preferenceValues" => {
+                            if let Some(ref mut p) = current_plugin_pref {
+                                p.preference_values = Some(val)
+                            }
+                        }
+                        "selectedValue" => {
+                            if let Some(ref mut p) = current_plugin_pref {
+                                p.selected_values = Some(val)
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            Event::End(e) => match e.name().as_ref() {
+                b"policyName" | b"policyComments" | b"policyOwner" | b"visibility"
+                | b"FamilyName" | b"Status" | b"PluginId" | b"PluginName" | b"Family" | b"name"
+                | b"value" | b"pluginName" | b"pluginId" | b"fullName" | b"preferenceName"
+                | b"preferenceType" | b"preferenceValues" | b"selectedValue" => current_tag = None,
+                b"FamilyItem" => {
+                    if let Some(f) = current_family.take() {
+                        families.push(f);
+                    }
+                }
+                b"PluginItem" => {
+                    if let Some(i) = current_individual.take() {
+                        individuals.push(i);
+                    }
+                }
+                b"item" => {
+                    if let Some(p) = current_plugin_pref.take() {
+                        plugin_prefs.push(p);
+                    }
+                }
+                b"preference" => {
+                    if let Some(s) = current_server_pref.take() {
+                        server_prefs.push(s);
+                    }
+                }
+                b"Policy" => break,
+                _ => {}
+            },
+            Event::Eof => break,
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    Ok((policy, families, individuals, plugin_prefs, server_prefs))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -314,5 +509,58 @@ fn empty_patch() -> Patch {
         value: None,
         user_id: None,
         engagement_id: None,
+    }
+}
+
+fn empty_policy() -> Policy {
+    Policy {
+        id: 0,
+        name: None,
+        comments: None,
+        owner: None,
+        visibility: None,
+    }
+}
+
+fn empty_family_selection() -> FamilySelection {
+    FamilySelection {
+        id: 0,
+        policy_id: None,
+        family_name: None,
+        status: None,
+    }
+}
+
+fn empty_individual_plugin_selection() -> IndividualPluginSelection {
+    IndividualPluginSelection {
+        id: 0,
+        policy_id: None,
+        plugin_id: None,
+        plugin_name: None,
+        family: None,
+        status: None,
+    }
+}
+
+fn empty_plugins_preference() -> PluginsPreference {
+    PluginsPreference {
+        id: 0,
+        policy_id: None,
+        plugin_name: None,
+        plugin_id: None,
+        full_name: None,
+        preference_name: None,
+        preference_type: None,
+        preference_values: None,
+        selected_values: None,
+    }
+}
+
+fn empty_server_preference() -> ServerPreference {
+    ServerPreference {
+        id: 0,
+        policy_id: None,
+        name: None,
+        value: None,
     }
 }

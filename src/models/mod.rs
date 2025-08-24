@@ -8,7 +8,11 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::net::IpAddr;
 
-use crate::schema::{nessus_hosts, nessus_items, nessus_patches, nessus_plugins};
+use crate::schema::{
+    nessus_family_selections, nessus_hosts, nessus_individual_plugin_selections, nessus_items,
+    nessus_patches, nessus_plugins, nessus_plugins_preferences, nessus_policies,
+    nessus_server_preferences,
+};
 
 #[derive(Debug, Queryable, Identifiable)]
 #[diesel(table_name = nessus_hosts)]
@@ -224,6 +228,126 @@ impl Default for Plugin {
     }
 }
 
+#[derive(Debug, Queryable, Identifiable)]
+#[diesel(table_name = nessus_policies)]
+pub struct Policy {
+    pub id: i32,
+    pub name: Option<String>,
+    pub comments: Option<String>,
+    pub owner: Option<String>,
+    pub visibility: Option<String>,
+}
+
+impl Default for Policy {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            name: None,
+            comments: None,
+            owner: None,
+            visibility: None,
+        }
+    }
+}
+
+#[derive(Debug, Queryable, Identifiable, Associations)]
+#[diesel(belongs_to(Policy))]
+#[diesel(table_name = nessus_family_selections)]
+pub struct FamilySelection {
+    pub id: i32,
+    pub policy_id: Option<i32>,
+    pub family_name: Option<String>,
+    pub status: Option<String>,
+}
+
+impl Default for FamilySelection {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            policy_id: None,
+            family_name: None,
+            status: None,
+        }
+    }
+}
+
+#[derive(Debug, Queryable, Identifiable, Associations)]
+#[diesel(belongs_to(Policy))]
+#[diesel(table_name = nessus_individual_plugin_selections)]
+pub struct IndividualPluginSelection {
+    pub id: i32,
+    pub policy_id: Option<i32>,
+    pub plugin_id: Option<i32>,
+    pub plugin_name: Option<String>,
+    pub family: Option<String>,
+    pub status: Option<String>,
+}
+
+impl Default for IndividualPluginSelection {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            policy_id: None,
+            plugin_id: None,
+            plugin_name: None,
+            family: None,
+            status: None,
+        }
+    }
+}
+
+#[derive(Debug, Queryable, Identifiable, Associations)]
+#[diesel(belongs_to(Policy))]
+#[diesel(table_name = nessus_plugins_preferences)]
+pub struct PluginsPreference {
+    pub id: i32,
+    pub policy_id: Option<i32>,
+    pub plugin_name: Option<String>,
+    pub plugin_id: Option<i32>,
+    pub full_name: Option<String>,
+    pub preference_name: Option<String>,
+    pub preference_type: Option<String>,
+    pub preference_values: Option<String>,
+    pub selected_values: Option<String>,
+}
+
+impl Default for PluginsPreference {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            policy_id: None,
+            plugin_name: None,
+            plugin_id: None,
+            full_name: None,
+            preference_name: None,
+            preference_type: None,
+            preference_values: None,
+            selected_values: None,
+        }
+    }
+}
+
+#[derive(Debug, Queryable, Identifiable, Associations)]
+#[diesel(belongs_to(Policy))]
+#[diesel(table_name = nessus_server_preferences)]
+pub struct ServerPreference {
+    pub id: i32,
+    pub policy_id: Option<i32>,
+    pub name: Option<String>,
+    pub value: Option<String>,
+}
+
+impl Default for ServerPreference {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            policy_id: None,
+            name: None,
+            value: None,
+        }
+    }
+}
+
 impl Host {
     pub fn sorted(conn: &mut SqliteConnection) -> QueryResult<Vec<Host>> {
         use crate::schema::nessus_hosts::dsl::*;
@@ -254,7 +378,6 @@ mod tests {
     use super::*;
     use crate::migrate::MIGRATIONS;
     use crate::schema::nessus_hosts;
-    use diesel::prelude::*;
     use diesel::sqlite::SqliteConnection;
     use diesel_migrations::MigrationHarness;
 

@@ -1,5 +1,5 @@
-use diesel::prelude::*;
 use crate::schema::nessus_policies;
+use diesel::prelude::*;
 
 #[derive(Debug, Queryable, Identifiable)]
 #[diesel(table_name = nessus_policies)]

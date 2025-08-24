@@ -4,10 +4,10 @@
 //! by the parser and CLI. Only a subset of the original Ruby models are
 //! implemented at the moment.
 
-pub mod policy;
 pub mod family_selection;
 pub mod individual_plugin_selection;
 pub mod plugins_preference;
+pub mod policy;
 pub mod server_preference;
 
 pub use family_selection::FamilySelection;

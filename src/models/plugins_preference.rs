@@ -1,6 +1,6 @@
-use diesel::prelude::*;
-use crate::schema::nessus_plugins_preferences;
 use super::policy::Policy;
+use crate::schema::nessus_plugins_preferences;
+use diesel::prelude::*;
 
 #[derive(Debug, Queryable, Identifiable, Associations)]
 #[diesel(belongs_to(Policy))]

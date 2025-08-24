@@ -81,8 +81,9 @@ impl Template for SimpleTemplate {
         let layer = doc.get_page(page1).get_layer(layer1);
         let font = doc.add_builtin_font(BuiltinFont::Helvetica)?;
         let text = format!("Hosts: {}", report.hosts.len());
-        layer.use_text(text, 14, Mm(10.0), Mm(287.0), &font);
-        doc.save(writer)?;
+        layer.use_text(text, 14.0, Mm(10.0), Mm(287.0), &font);
+        let mut buf = std::io::BufWriter::new(writer);
+        doc.save(&mut buf)?;
         Ok(())
     }
 }

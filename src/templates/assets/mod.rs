@@ -1,0 +1,37 @@
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
+
+/// Raw bytes of a tiny embedded logo image.
+///
+/// The image is a 1x1 transparent PNG encoded directly in the source to avoid
+/// storing binary files in the repository.
+pub const LOGO_PNG: &[u8] = &[
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x04, 0x00, 0x00, 0x00, 0xB5, 0x1C, 0x0C,
+    0x02, 0x00, 0x00, 0x00, 0x0B, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+    0x42, 0x60, 0x82,
+];
+
+/// Access the embedded logo image bytes.
+pub fn logo_png() -> &'static [u8] {
+    LOGO_PNG
+}
+
+/// Write the embedded logo image to the system temporary directory and return
+/// the path to the written file.
+pub fn write_logo_png() -> io::Result<PathBuf> {
+    let mut path = std::env::temp_dir();
+    path.push("logo.png");
+    fs::write(&path, LOGO_PNG)?;
+    Ok(path)
+}
+
+/// Write the embedded logo image into the provided directory.
+/// Returns the full path of the written file.
+pub fn write_logo_png_to(dir: &Path) -> io::Result<PathBuf> {
+    let path = dir.join("logo.png");
+    fs::write(&path, LOGO_PNG)?;
+    Ok(path)
+}

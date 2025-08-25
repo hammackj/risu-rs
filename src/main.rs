@@ -156,9 +156,21 @@ fn run() -> Result<(), error::Error> {
         manager.register(Box::new(template::SimpleTemplate));
         manager.register(Box::new(templates::TemplateTemplate));
         manager.register(Box::new(templates::HostSummaryTemplate));
+        manager.register(Box::new(templates::MSPatchSummaryTemplate));
         manager.register(Box::new(templates::PCIComplianceTemplate));
         manager.register(Box::new(templates::StigFindingsSummaryTemplate));
         manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
+        manager.register(Box::new(templates::AuthenticationSummaryTemplate));
+        manager.register(Box::new(templates::CoverSheetTemplate));
+        manager.register(Box::new(templates::ExecSummaryTemplate));
+        manager.register(Box::new(templates::ExecutiveSummaryDetailedTemplate));
+        manager.register(Box::new(templates::ExploitablitySummaryTemplate));
+        manager.register(Box::new(templates::FailedAuditsTemplate));
+        manager.register(Box::new(templates::PluginSummaryTemplate));
+        manager.register(Box::new(templates::RollupSummaryTemplate));
+        manager.register(Box::new(templates::TalkingPointsTemplate));
+        manager.register(Box::new(templates::TechnicalFindingsTemplate));
+        manager.register(Box::new(templates::Top25Template));
         manager.load_templates().map_err(error::Error::Template)?;
         manager.display();
         return Ok(());
@@ -198,9 +210,21 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(template::SimpleTemplate));
             manager.register(Box::new(templates::TemplateTemplate));
             manager.register(Box::new(templates::HostSummaryTemplate));
+            manager.register(Box::new(templates::MSPatchSummaryTemplate));
             manager.register(Box::new(templates::PCIComplianceTemplate));
             manager.register(Box::new(templates::StigFindingsSummaryTemplate));
             manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
+            manager.register(Box::new(templates::AuthenticationSummaryTemplate));
+            manager.register(Box::new(templates::CoverSheetTemplate));
+            manager.register(Box::new(templates::ExecSummaryTemplate));
+            manager.register(Box::new(templates::ExecutiveSummaryDetailedTemplate));
+            manager.register(Box::new(templates::ExploitablitySummaryTemplate));
+            manager.register(Box::new(templates::FailedAuditsTemplate));
+            manager.register(Box::new(templates::PluginSummaryTemplate));
+            manager.register(Box::new(templates::RollupSummaryTemplate));
+            manager.register(Box::new(templates::TalkingPointsTemplate));
+            manager.register(Box::new(templates::TechnicalFindingsTemplate));
+            manager.register(Box::new(templates::Top25Template));
             manager.load_templates().map_err(error::Error::Template)?;
             let tmpl = manager.get(&tmpl_name).ok_or_else(|| {
                 error::Error::Config(format!(

@@ -2,7 +2,8 @@
 //!
 //! ```text
 //! risu-rs create-config              # write default config.yml
-//! risu-rs migrate --create-tables    # run database migrations
+//! risu-rs --create-tables            # run database migrations
+//! risu-rs --test-connection          # check database connection
 //! risu-rs parse scan.nessus -o out.csv -t simple --post-process
 //! risu-rs --list-templates           # list available templates
 //! risu-rs --list-post-process        # list post-process plugins
@@ -26,6 +27,8 @@ mod templates;
 mod version;
 
 use clap::{Parser, Subcommand};
+use diesel::prelude::*;
+use diesel::sqlite::SqliteConnection;
 use std::collections::HashMap;
 use tracing::error;
 
@@ -56,6 +59,15 @@ struct Cli {
     /// Open an interactive database console
     #[arg(long)]
     console: bool,
+    /// Create tables in the database
+    #[arg(long)]
+    create_tables: bool,
+    /// Drop tables in the database
+    #[arg(long)]
+    drop_tables: bool,
+    /// Test database connection
+    #[arg(long)]
+    test_connection: bool,
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -64,15 +76,6 @@ struct Cli {
 enum Commands {
     /// Generate a configuration file with default values
     CreateConfig,
-    /// Run database migrations
-    Migrate {
-        /// Create tables in the database
-        #[arg(long)]
-        create_tables: bool,
-        /// Drop tables in the database
-        #[arg(long)]
-        drop_tables: bool,
-    },
     /// Parse an input file and post process it
     Parse {
         /// File to parse
@@ -153,6 +156,24 @@ fn run() -> Result<(), error::Error> {
     };
     init_logging(level, &cli.log_format);
 
+    if cli.create_tables || cli.drop_tables {
+        migrate::run(cli.create_tables, cli.drop_tables)?;
+        println!("Migration complete");
+        return Ok(());
+    }
+
+    if cli.test_connection {
+        let cfg = config::load_config(std::path::Path::new("config.yml")).unwrap_or_default();
+        match SqliteConnection::establish(&cfg.database_url) {
+            Ok(_) => println!("Database connection successful"),
+            Err(e) => {
+                println!("Database connection failed: {e}");
+                return Err(e.into());
+            }
+        }
+        return Ok(());
+    }
+
     if cli.console {
         console::run()?;
         return Ok(());
@@ -198,12 +219,6 @@ fn run() -> Result<(), error::Error> {
         Some(Commands::CreateConfig) => {
             let path = std::path::Path::new("config.yml");
             config::create_config(path)?;
-        }
-        Some(Commands::Migrate {
-            create_tables,
-            drop_tables,
-        }) => {
-            migrate::run(create_tables, drop_tables)?;
         }
         Some(Commands::Parse {
             file,

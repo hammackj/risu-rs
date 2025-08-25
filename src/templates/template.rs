@@ -20,11 +20,8 @@ impl Template for TemplateTemplate {
         renderer: &mut dyn Renderer,
         args: &HashMap<String, String>,
     ) -> Result<(), Box<dyn Error>> {
-        let title = args
-            .get("title")
-            .map(String::as_str)
-            .unwrap_or("Template");
-        renderer.text(title)?;
+        let title = args.get("title").map(String::as_str).unwrap_or("Template");
+        renderer.heading(1, title)?;
         // Demonstrate embedding an image from the bundled assets directory.
         // The image bytes are included in the binary and encoded as a data URI
         // for renderers that accept inline images.

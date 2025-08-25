@@ -160,6 +160,7 @@ diesel::table! {
         risk_score -> Nullable<Integer>,
         user_id -> Nullable<Integer>,
         engagement_id -> Nullable<Integer>,
+        rollup_finding -> Nullable<Bool>,
     }
 }
 

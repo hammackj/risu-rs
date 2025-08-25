@@ -6,7 +6,7 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use plotters::prelude::*;
 
-use crate::schema::nessus_items::dsl::{nessus_items, plugin_name};
+use crate::schema::nessus_items::dsl::{nessus_items, plugin_name, rollup_finding};
 
 /// Generate a bar chart showing the most common vulnerabilities.
 /// The result is saved to `dir/top_vulnerabilities.png` and the path is returned.
@@ -21,7 +21,11 @@ impl TopVulnGraph {
     ) -> Result<PathBuf, Box<dyn Error>> {
         let names: Vec<Option<String>> = nessus_items
             .select(plugin_name)
-            .filter(plugin_name.is_not_null())
+            .filter(
+                plugin_name
+                    .is_not_null()
+                    .and(rollup_finding.ne(true).or(rollup_finding.is_null())),
+            )
             .load(conn)?;
 
         let mut counts: HashMap<String, i32> = HashMap::new();
@@ -72,7 +76,10 @@ impl TopVulnGraph {
             .draw()?;
 
         chart.draw_series(data.iter().enumerate().map(|(i, (_, c))| {
-            Rectangle::new([(i as i32, 0), (i as i32 + 1, *c)], Palette99::pick(i).filled())
+            Rectangle::new(
+                [(i as i32, 0), (i as i32 + 1, *c)],
+                Palette99::pick(i).filled(),
+            )
         }))?;
 
         root.present()?;
@@ -80,4 +87,3 @@ impl TopVulnGraph {
         Ok(file)
     }
 }
-

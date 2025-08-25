@@ -31,6 +31,9 @@ impl Template for PCIComplianceTemplate {
         let mut passed = 0;
         let mut failed = 0;
         for item in &report.items {
+            if item.rollup_finding == Some(true) {
+                continue;
+            }
             if item.plugin_id == Some(33929) {
                 if item
                     .plugin_output

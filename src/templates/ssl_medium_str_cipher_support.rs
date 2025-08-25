@@ -26,6 +26,9 @@ impl Template for SslMediumStrCipherSupportTemplate {
         renderer.text(title)?;
         let mut count = 0;
         for item in &report.items {
+            if item.rollup_finding == Some(true) {
+                continue;
+            }
             if let Some(name) = &item.plugin_name {
                 if name.to_lowercase().contains("ssl medium") {
                     count += 1;

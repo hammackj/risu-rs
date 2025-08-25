@@ -176,3 +176,47 @@ fn parses_policy_block() {
     assert_eq!(sp.name.as_deref(), Some("somepref"));
     assert_eq!(sp.value.as_deref(), Some("val"));
 }
+
+#[test]
+fn recognizes_host_property_patterns() {
+    let xml = r#"<NessusClientData_v2><ReportHost name='h'><HostProperties>
+<tag name='cpe-0'>cpe:/a:vendor:prod:1.0</tag>
+<tag name='KB12345'>Patch KB</tag>
+<tag name='patch-summary-cves'>1</tag>
+<tag name='mcafee-epo-guid'>abc</tag>
+</HostProperties><ReportItem pluginID='1' severity='0' pluginName='plug'><msft>MS13-001</msft></ReportItem></ReportHost></NessusClientData_v2>"#;
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("hostprops.nessus");
+    fs::write(&path, xml).unwrap();
+
+    let buf = Arc::new(Mutex::new(Vec::new()));
+    let make_writer = { let buf = buf.clone(); move || VecWriter(buf.clone()) };
+    let subscriber = fmt()
+        .with_max_level(Level::DEBUG)
+        .with_writer(make_writer)
+        .finish();
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    let report = parse_file(&path).unwrap();
+
+    let names: Vec<String> = report
+        .host_properties
+        .iter()
+        .filter_map(|p| p.name.clone())
+        .collect();
+    assert!(names.contains(&"cpe-0".to_string()));
+    assert!(names.contains(&"KB12345".to_string()));
+    assert!(names.contains(&"patch-summary-cves".to_string()));
+    assert!(names.contains(&"mcafee-epo-guid".to_string()));
+
+    assert!(report.references.iter().any(|r| r.source.as_deref() == Some("MSFT")
+        && r.value.as_deref() == Some("MS13-001")));
+
+    let logs = String::from_utf8(buf.lock().unwrap().clone()).unwrap();
+    assert!(
+        !logs.contains("Unknown host properties encountered"),
+        "logs: {}",
+        logs
+    );
+    assert!(!logs.contains("Unknown XML elements encountered"));
+}

@@ -23,24 +23,80 @@ use sha2::{Digest, Sha256};
 
 /// XML element names that map directly to reference sources.
 const VALID_REFERENCE_ELEMENTS: &[&str] = &[
-    "cve", "bid", "cert", "osvdb", "iava", "edb", "rhsa", "secunia",
+    "cpe", "bid", "see_also", "xref", "cve", "iava", "msft", "osvdb",
+    "cert", "edb-id", "rhsa", "secunia", "suse", "dsa", "owasp", "cwe",
+    "iavb", "iavt", "cisco-sa", "ics-alert", "cisco-bug-id", "cisco-sr",
+    "cert-vu", "vmsa", "apple-sa", "icsa", "cert-cc", "msvr", "usn",
+    "hp", "glsa", "freebsd", "tra",
 ];
 
 /// Host property names that are recognized and handled specially.
 const VALID_HOST_PROPERTIES: &[&str] = &[
+    "HOST_END",
+    "mac-address",
+    "HOST_START",
+    "operating-system",
     "host-ip",
     "host-fqdn",
     "netbios-name",
-    "operating-system",
-    "mac-address",
-    "HOST_START",
-    "HOST_END",
+    "local-checks-proto",
+    "smb-login-used",
+    "ssh-auth-meth",
+    "ssh-login-used",
+    "pci-dss-compliance",
+    "pci-dss-compliance:",
+    "system-type",
+    "bios-uuid",
+    "pcidss:compliance:failed",
+    "pcidss:compliance:passed",
+    "pcidss:deprecated_ssl",
+    "pcidss:expired_ssl_certificate",
+    "pcidss:high_risk_flaw",
+    "pcidss:medium_risk_flaw",
+    "pcidss:reachable_db",
+    "pcidss:www:xss",
+    "pcidss:directory_browsing",
+    "pcidss:known_credentials",
+    "pcidss:compromised_host:worm",
+    "pcidss:obsolete_operating_system",
+    "pcidss:dns_zone_transfer",
+    "pcidss:unprotected_mssql_db",
+    "pcidss:obsolete_software",
+    "pcidss:www:sql_injection",
+    "pcidss:backup_files",
+    "traceroute-hop-0",
+    "traceroute-hop-1",
+    "traceroute-hop-2",
+    "operating-system-unsupported",
+    "patch-summary-total-cves",
+    "pcidss:insecure_http_methods",
+    "LastUnauthenticatedResults",
+    "LastAuthenticatedResults",
+    "cpe-0",
+    "cpe-1",
+    "cpe-2",
+    "cpe-3",
+    "Credentialed_Scan",
+    "policy-used",
+    "UnsupportedProduct:microsoft:windows_xp::sp2",
+    "UnsupportedProduct:microsoft:windows_xp",
+    "UnsupportedProduct:microsoft:windows_2000",
+    "UnsupportedProduct",
+    "mcafee-epo-guid",
 ];
 
 lazy_static! {
     static ref PATCH_RE: Regex = Regex::new("(?i)ms\\d{2}-\\d+").unwrap();
     static ref TRACEROUTE_HOP_RE: Regex = Regex::new(r"^traceroute_hop_\\d+$").unwrap();
     static ref PCIDSS_RE: Regex = Regex::new(r"^pcidss:.*$").unwrap();
+    static ref PATCH_SUMMARY_CVE_NUM_RE: Regex =
+        Regex::new(r"^patch-summary-cve-num$").unwrap();
+    static ref PATCH_SUMMARY_CVES_RE: Regex =
+        Regex::new(r"^patch-summary-cves$").unwrap();
+    static ref PATCH_SUMMARY_TXT_RE: Regex =
+        Regex::new(r"^patch-summary-txt$").unwrap();
+    static ref CPE_RE: Regex = Regex::new(r"^cpe-\d+$").unwrap();
+    static ref KB_RE: Regex = Regex::new(r"^KB\d+$").unwrap();
 }
 
 /// Parsed representation of a Nessus report.
@@ -183,6 +239,11 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                                 && !PATCH_RE.is_match(&name)
                                 && !TRACEROUTE_HOP_RE.is_match(&name)
                                 && !PCIDSS_RE.is_match(&name)
+                                && !PATCH_SUMMARY_CVE_NUM_RE.is_match(&name)
+                                && !PATCH_SUMMARY_CVES_RE.is_match(&name)
+                                && !PATCH_SUMMARY_TXT_RE.is_match(&name)
+                                && !CPE_RE.is_match(&name)
+                                && !KB_RE.is_match(&name)
                             {
                                 unknown_host_props.insert(name.clone());
                             }
@@ -1010,10 +1071,10 @@ mod tests {
     fn captures_mixed_reference_tags() {
         let dir = tempfile::tempdir().unwrap();
         let file_path = dir.path().join("refs.nessus");
-        let xml = r#"<NessusClientData_v2><ReportHost name='h'><HostProperties></HostProperties><ReportItem pluginID='1' severity='0' pluginName='plug'><ref source='CVE'>CVE-2023-1111</ref><xref>BID-7654</xref><cve>CVE-2023-2222</cve><osvdb>12345</osvdb></ReportItem></ReportHost></NessusClientData_v2>"#;
+        let xml = r#"<NessusClientData_v2><ReportHost name='h'><HostProperties></HostProperties><ReportItem pluginID='1' severity='0' pluginName='plug'><ref source='CVE'>CVE-2023-1111</ref><xref>BID-7654</xref><cve>CVE-2023-2222</cve><osvdb>12345</osvdb><msft>MS13-001</msft></ReportItem></ReportHost></NessusClientData_v2>"#;
         std::fs::write(&file_path, xml).unwrap();
         let report = parse_file(&file_path).expect("parse");
-        assert_eq!(report.references.len(), 4);
+        assert_eq!(report.references.len(), 5);
         assert!(
             report
                 .references
@@ -1039,6 +1100,13 @@ mod tests {
             report.references.iter().any(
                 |r| r.source.as_deref() == Some("OSVDB") && r.value.as_deref() == Some("12345")
             )
+        );
+        assert!(
+            report
+                .references
+                .iter()
+                .any(|r| r.source.as_deref() == Some("MSFT")
+                    && r.value.as_deref() == Some("MS13-001"))
         );
     }
 

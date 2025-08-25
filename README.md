@@ -28,8 +28,16 @@ template_paths:
 
 Templates produce rendered reports from parsed scan data. Implement the
 [`Template`](src/template.rs) trait and either register your template at runtime
-or expose a `create_template` constructor in a dynamic library placed in one of
-the configured `template_paths`.
+or expose a `create_template` constructor in a dynamic library. The
+`TemplateManager` searches for dynamic libraries in the following locations,
+in order:
+
+1. A `templates/` directory next to the executable.
+2. The current working directory.
+3. `$HOME/.risu/templates`.
+4. Any additional paths listed in the configuration `template_paths`.
+
+Paths are searched non-recursively and duplicates are ignored.
 
 ## Post-process plugins
 

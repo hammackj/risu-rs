@@ -5,7 +5,12 @@
 //! the configured template paths. The [`TemplateManager`] handles discovery and
 //! selection of templates.
 
-use std::{collections::HashMap, error::Error, fs, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    error::Error,
+    fs,
+    path::PathBuf,
+};
 
 use libloading::{Library, Symbol};
 
@@ -35,12 +40,38 @@ pub struct TemplateManager {
 }
 
 impl TemplateManager {
-    /// Create a new manager that searches the provided paths.
+    /// Create a new manager that searches the provided paths along with
+    /// default locations.
     pub fn new(paths: Vec<PathBuf>) -> Self {
+        let mut search_paths = Vec::new();
+
+        // 1. Templates bundled with the executable.
+        if let Ok(mut exe_path) = std::env::current_exe() {
+            exe_path.pop();
+            search_paths.push(exe_path.join("templates"));
+        }
+
+        // 2. The current working directory.
+        if let Ok(cwd) = std::env::current_dir() {
+            search_paths.push(cwd);
+        }
+
+        // 3. User-specific template directory ($HOME/.risu/templates).
+        if let Some(home) = std::env::var_os("HOME") {
+            search_paths.push(PathBuf::from(home).join(".risu").join("templates"));
+        }
+
+        // Append any additional provided paths.
+        search_paths.extend(paths);
+
+        // Deduplicate paths while preserving order.
+        let mut seen = HashSet::new();
+        search_paths.retain(|p| seen.insert(p.clone()));
+
         Self {
             templates: HashMap::new(),
             _libs: Vec::new(),
-            paths,
+            paths: search_paths,
         }
     }
 
@@ -54,13 +85,39 @@ impl TemplateManager {
                     let p = entry.path();
                     if p.extension().and_then(|s| s.to_str()) == Some("so") {
                         unsafe {
-                            let lib = Library::new(&p)?;
-                            let ctor: Symbol<unsafe fn() -> Box<dyn Template>> =
-                                lib.get(b"create_template")?;
-                            let tmpl = ctor();
-                            let name = tmpl.name().to_string();
-                            self.templates.insert(name, tmpl);
-                            self._libs.push(lib);
+                            match Library::new(&p) {
+                                Ok(lib) => {
+                                    let ctor = lib.get::<Symbol<unsafe fn() -> Box<dyn Template>>>(
+                                        b"create_template",
+                                    );
+                                    match ctor {
+                                        Ok(ctor) => {
+                                            let tmpl = ctor();
+                                            let name = tmpl.name().to_string();
+                                            if self.templates.contains_key(&name) {
+                                                eprintln!(
+                                                    "template '{}' already registered, skipping {}",
+                                                    name,
+                                                    p.display()
+                                                );
+                                            } else {
+                                                self.templates.insert(name, tmpl);
+                                                self._libs.push(lib);
+                                            }
+                                        }
+                                        Err(e) => {
+                                            eprintln!(
+                                                "invalid template module '{}': {}",
+                                                p.display(),
+                                                e
+                                            );
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    eprintln!("failed to load template '{}': {}", p.display(), e);
+                                }
+                            }
                         }
                     }
                 }
@@ -72,7 +129,11 @@ impl TemplateManager {
     /// Register a template instance manually.
     pub fn register(&mut self, tmpl: Box<dyn Template>) {
         let name = tmpl.name().to_string();
-        self.templates.insert(name, tmpl);
+        if self.templates.contains_key(&name) {
+            eprintln!("template '{}' already registered, skipping", name);
+        } else {
+            self.templates.insert(name, tmpl);
+        }
     }
 
     /// Retrieve a template by name.

@@ -18,6 +18,11 @@ use crate::models::{
 use base64::{Engine, engine::general_purpose};
 use regex::Regex;
 
+/// XML element names that map directly to reference sources.
+const VALID_REFERENCE_ELEMENTS: &[&str] = &[
+    "cve", "bid", "cert", "osvdb", "iava", "edb", "rhsa", "secunia",
+];
+
 /// Parsed representation of a Nessus report.
 #[derive(Default)]
 pub struct NessusReport {
@@ -274,7 +279,19 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     }
                 }
                 _ => {
-                    unknown_tags.insert(String::from_utf8_lossy(e.name().as_ref()).to_string());
+                    let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                    if VALID_REFERENCE_ELEMENTS.contains(&name.as_str()) {
+                        if current_item_index.is_some() {
+                            current_reference = Some(PendingReference {
+                                source: Some(name.to_uppercase()),
+                                value: String::new(),
+                            });
+                        } else {
+                            unknown_tags.insert(name);
+                        }
+                    } else {
+                        unknown_tags.insert(name);
+                    }
                 }
             },
             Event::Text(e) => {
@@ -439,6 +456,31 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     }
                 }
                 b"ref" | b"xref" => {
+                    if let Some(p) = current_reference.take() {
+                        let mut reference = Reference::default();
+                        if let Some(idx) = current_item_index {
+                            reference.item_id = Some(idx);
+                            reference.plugin_id =
+                                report.items.get(idx as usize).and_then(|it| it.plugin_id);
+                        }
+                        let mut src = p.source;
+                        if src.is_none() {
+                            let v_upper = p.value.to_uppercase();
+                            if v_upper.starts_with("CVE") {
+                                src = Some("CVE".to_string());
+                            } else if v_upper.starts_with("BID") {
+                                src = Some("BID".to_string());
+                            }
+                        }
+                        reference.source = src;
+                        reference.value = Some(p.value.trim().to_string());
+                        report.references.push(reference);
+                    }
+                }
+                _ if VALID_REFERENCE_ELEMENTS
+                    .iter()
+                    .any(|t| e.name().as_ref() == t.as_bytes()) =>
+                {
                     if let Some(p) = current_reference.take() {
                         let mut reference = Reference::default();
                         if let Some(idx) = current_item_index {
@@ -705,6 +747,36 @@ mod tests {
             report.service_descriptions[0].svc_name.as_deref(),
             Some("http")
         );
+    }
+
+    #[test]
+    fn captures_mixed_reference_tags() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("refs.nessus");
+        let xml = r#"<NessusClientData_v2><ReportHost name='h'><HostProperties></HostProperties><ReportItem pluginID='1' severity='0' pluginName='plug'><ref source='CVE'>CVE-2023-1111</ref><xref>BID-7654</xref><cve>CVE-2023-2222</cve><osvdb>12345</osvdb></ReportItem></ReportHost></NessusClientData_v2>"#;
+        std::fs::write(&file_path, xml).unwrap();
+        let report = parse_file(&file_path).expect("parse");
+        assert_eq!(report.references.len(), 4);
+        assert!(report
+            .references
+            .iter()
+            .any(|r| r.source.as_deref() == Some("CVE")
+                && r.value.as_deref() == Some("CVE-2023-1111")));
+        assert!(report
+            .references
+            .iter()
+            .any(|r| r.source.as_deref() == Some("BID")
+                && r.value.as_deref() == Some("BID-7654")));
+        assert!(report
+            .references
+            .iter()
+            .any(|r| r.source.as_deref() == Some("CVE")
+                && r.value.as_deref() == Some("CVE-2023-2222")));
+        assert!(report
+            .references
+            .iter()
+            .any(|r| r.source.as_deref() == Some("OSVDB")
+                && r.value.as_deref() == Some("12345")));
     }
 
     #[test]

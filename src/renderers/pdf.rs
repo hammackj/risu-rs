@@ -5,19 +5,7 @@ use printpdf::{
     PdfPageIndex,
 };
 
-/// Trait implemented by renderers that output to various formats.
-pub trait Renderer {
-    /// Write free-form text to the current output position.
-    fn text(&mut self, text: &str) -> Result<(), Box<dyn Error>>;
-    /// Begin a new page in the output, if supported.
-    fn start_new_page(&mut self) -> Result<(), Box<dyn Error>>;
-    /// Finalize the document and write it to the provided writer.
-    fn save(&mut self, writer: &mut dyn Write) -> Result<(), Box<dyn Error>>;
-    /// Record a heading for navigation structures.
-    fn heading(&mut self, _level: usize, text: &str) -> Result<(), Box<dyn Error>> {
-        self.text(text)
-    }
-}
+use super::Renderer;
 
 /// Renderer that produces PDF documents using the `printpdf` crate.
 pub struct PdfRenderer {
@@ -97,63 +85,5 @@ impl Renderer for PdfRenderer {
             self.headings.push((level, text.to_string(), self.page_num));
         }
         self.text(text)
-    }
-}
-
-/// Renderer that outputs simple CSV files using the `csv` crate.
-pub struct CsvRenderer {
-    rows: Vec<String>,
-}
-
-impl CsvRenderer {
-    /// Create a new CSV renderer.
-    pub fn new() -> Self {
-        Self { rows: Vec::new() }
-    }
-}
-
-impl Renderer for CsvRenderer {
-    fn text(&mut self, text: &str) -> Result<(), Box<dyn Error>> {
-        self.rows.push(text.to_string());
-        Ok(())
-    }
-
-    fn start_new_page(&mut self) -> Result<(), Box<dyn Error>> {
-        // CSV output has no pages; this is a no-op.
-        Ok(())
-    }
-
-    fn save(&mut self, writer: &mut dyn Write) -> Result<(), Box<dyn Error>> {
-        let mut wtr = csv::Writer::from_writer(writer);
-        for row in &self.rows {
-            wtr.write_record(&[row])?;
-        }
-        wtr.flush()?;
-        Ok(())
-    }
-}
-
-/// Renderer that discards all output. Useful for benchmarking or tests where
-/// rendering is unnecessary.
-pub struct NilRenderer;
-
-impl NilRenderer {
-    /// Create a new `NilRenderer`.
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl Renderer for NilRenderer {
-    fn text(&mut self, _text: &str) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-
-    fn start_new_page(&mut self) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-
-    fn save(&mut self, _writer: &mut dyn Write) -> Result<(), Box<dyn Error>> {
-        Ok(())
     }
 }

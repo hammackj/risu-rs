@@ -1,0 +1,13 @@
+<NessusClientData_v2 xmlns:cm="http://example.com/cm">
+  <ReportHost name="h">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="1" severity="0" pluginName="plug">
+      <cm:compliance-info>info</cm:compliance-info>
+      <cm:compliance-result>Failed</cm:compliance-result>
+      <cm:root-cause>rc</cm:root-cause>
+      <cm:agent>nessus</cm:agent>
+      <cm:potential-vulnerability>true</cm:potential-vulnerability>
+      <cm:default-account>false</cm:default-account>
+    </ReportItem>
+  </ReportHost>
+</NessusClientData_v2>

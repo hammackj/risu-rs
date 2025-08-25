@@ -78,6 +78,7 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
     let mut pending_service_description: Option<ServiceDescription> = None;
     let mut current_plugin_output: Option<String> = None;
     let mut current_item_index: Option<i32> = None;
+    let mut current_item_tag: Option<String> = None;
     let base_dir: PathBuf = path.parent().unwrap_or(Path::new(".")).to_path_buf();
 
     struct PendingAttachment {
@@ -195,6 +196,20 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     report.items.push(item);
                     current_item_index = Some((report.items.len() - 1) as i32);
                     if let Some(pid) = report.items.last().and_then(|it| it.plugin_id) {
+                        if let Some(plugin) =
+                            report.plugins.iter_mut().find(|p| p.plugin_id == Some(pid))
+                        {
+                            if plugin.plugin_name.is_none() {
+                                plugin.plugin_name =
+                                    report.items.last().and_then(|it| it.plugin_name.clone());
+                            }
+                        } else {
+                            let mut plugin = empty_plugin();
+                            plugin.plugin_id = Some(pid);
+                            plugin.plugin_name =
+                                report.items.last().and_then(|it| it.plugin_name.clone());
+                            report.plugins.push(plugin);
+                        }
                         if pid == 22964 {
                             let mut sd = ServiceDescription::default();
                             sd.item_id = current_item_index;
@@ -250,6 +265,14 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                 b"plugin_output" => {
                     current_plugin_output = Some(String::new());
                 }
+                b"description" | b"solution" | b"risk_factor" | b"cvss_base_score" => {
+                    if current_item_index.is_some() {
+                        current_item_tag =
+                            Some(String::from_utf8_lossy(e.name().as_ref()).to_string());
+                    } else {
+                        unknown_tags.insert(String::from_utf8_lossy(e.name().as_ref()).to_string());
+                    }
+                }
                 _ => {
                     unknown_tags.insert(String::from_utf8_lossy(e.name().as_ref()).to_string());
                 }
@@ -261,6 +284,73 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     att.data.push_str(&e.unescape()?.into_owned());
                 } else if let Some(out) = &mut current_plugin_output {
                     out.push_str(&e.unescape()?.into_owned());
+                } else if let Some(field) = &current_item_tag {
+                    let text = e.unescape()?.into_owned();
+                    if let Some(idx) = current_item_index {
+                        if let Some(item) = report.items.get_mut(idx as usize) {
+                            match field.as_str() {
+                                "description" => {
+                                    item.description = Some(text.clone());
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.description.is_none() {
+                                                plugin.description = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "solution" => {
+                                    item.solution = Some(text.clone());
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.solution.is_none() {
+                                                plugin.solution = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "risk_factor" => {
+                                    item.risk_factor = Some(text.clone());
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.risk_factor.is_none() {
+                                                plugin.risk_factor = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "cvss_base_score" => {
+                                    if let Ok(score) = text.parse::<f32>() {
+                                        item.cvss_base_score = Some(score);
+                                        if let Some(pid) = item.plugin_id {
+                                            if let Some(plugin) = report
+                                                .plugins
+                                                .iter_mut()
+                                                .find(|p| p.plugin_id == Some(pid))
+                                            {
+                                                if plugin.cvss_base_score.is_none() {
+                                                    plugin.cvss_base_score = Some(score);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
                 } else if let Some(tag) = &current_tag {
                     let val = e.unescape()?.into_owned();
                     if let Some(host) = &mut current_host {
@@ -289,6 +379,9 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                 b"tag" => {
                     current_tag = None;
                 }
+                b"description" | b"solution" | b"risk_factor" | b"cvss_base_score" => {
+                    current_item_tag = None;
+                }
                 b"plugin_output" => {
                     if let Some(text) = current_plugin_output.take() {
                         if let Some(idx) = current_item_index {
@@ -306,6 +399,7 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         current_service_descriptions.push(sd);
                     }
                     current_item_index = None;
+                    current_item_tag = None;
                 }
                 b"ReportHost" => {
                     if let Some(host) = current_host.take() {
@@ -372,18 +466,6 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
             _ => {}
         }
         buf.clear();
-    }
-
-    // very naive plugin collection: deduplicate by plugin_id from items
-    for item in &report.items {
-        if let Some(pid) = item.plugin_id {
-            if !report.plugins.iter().any(|p| p.plugin_id == Some(pid)) {
-                let mut plugin = empty_plugin();
-                plugin.plugin_id = Some(pid);
-                plugin.plugin_name = item.plugin_name.clone();
-                report.plugins.push(plugin);
-            }
-        }
     }
 
     if !unknown_tags.is_empty() {
@@ -624,6 +706,34 @@ mod tests {
             Some("http")
         );
     }
+
+    #[test]
+    fn parses_plugin_attributes() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("plugin_attrs.nessus");
+        let xml = r#"<NessusClientData_v2><ReportHost name='h'><HostProperties></HostProperties>
+<ReportItem pluginID='1' severity='0' pluginName='plug'></ReportItem>
+<ReportItem pluginID='1' severity='0' pluginName='plug'>
+<description>desc</description>
+<solution>fix</solution>
+<risk_factor>Medium</risk_factor>
+<cvss_base_score>5.0</cvss_base_score>
+</ReportItem>
+</ReportHost></NessusClientData_v2>"#;
+        std::fs::write(&file_path, xml).unwrap();
+        let report = parse_file(&file_path).expect("parse");
+        assert_eq!(report.items.len(), 2);
+        assert_eq!(report.plugins.len(), 1);
+        assert_eq!(report.items[1].description.as_deref(), Some("desc"));
+        assert_eq!(report.items[1].solution.as_deref(), Some("fix"));
+        assert_eq!(report.items[1].risk_factor.as_deref(), Some("Medium"));
+        assert_eq!(report.items[1].cvss_base_score, Some(5.0));
+        let plugin = &report.plugins[0];
+        assert_eq!(plugin.description.as_deref(), Some("desc"));
+        assert_eq!(plugin.solution.as_deref(), Some("fix"));
+        assert_eq!(plugin.risk_factor.as_deref(), Some("Medium"));
+        assert_eq!(plugin.cvss_base_score, Some(5.0));
+    }
 }
 
 fn empty_host() -> Host {
@@ -657,6 +767,10 @@ fn empty_item() -> Item {
         protocol: None,
         severity: None,
         plugin_name: None,
+        description: None,
+        solution: None,
+        risk_factor: None,
+        cvss_base_score: None,
         verified: None,
         cm_compliance_info: None,
         cm_compliance_actual_value: None,

@@ -16,12 +16,31 @@ use crate::models::{
     PolicyPlugin, Reference, ServerPreference, ServiceDescription,
 };
 use base64::{Engine, engine::general_purpose};
+use chrono::NaiveDateTime;
+use lazy_static::lazy_static;
 use regex::Regex;
 
 /// XML element names that map directly to reference sources.
 const VALID_REFERENCE_ELEMENTS: &[&str] = &[
     "cve", "bid", "cert", "osvdb", "iava", "edb", "rhsa", "secunia",
 ];
+
+/// Host property names that are recognized and handled specially.
+const VALID_HOST_PROPERTIES: &[&str] = &[
+    "host-ip",
+    "host-fqdn",
+    "netbios-name",
+    "operating-system",
+    "mac-address",
+    "HOST_START",
+    "HOST_END",
+];
+
+lazy_static! {
+    static ref PATCH_RE: Regex = Regex::new("(?i)ms\\d{2}-\\d+").unwrap();
+    static ref TRACEROUTE_HOP_RE: Regex = Regex::new(r"^traceroute_hop_\\d+$").unwrap();
+    static ref PCIDSS_RE: Regex = Regex::new(r"^pcidss:.*$").unwrap();
+}
 
 /// Parsed representation of a Nessus report.
 #[derive(Default)]
@@ -101,8 +120,6 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
 
     let mut current_reference: Option<PendingReference> = None;
 
-    let patch_re = Regex::new("(?i)ms\\d{2}-\\d+").unwrap();
-
     // Track XML elements or attributes we don't explicitly handle so developers
     // can spot schema changes.
     let mut unknown_tags = BTreeSet::new();
@@ -159,7 +176,15 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                 b"tag" => {
                     for a in e.attributes().flatten() {
                         if a.key.as_ref() == b"name" {
-                            current_tag = Some(a.unescape_value()?.to_string());
+                            let name = a.unescape_value()?.to_string();
+                            if !VALID_HOST_PROPERTIES.contains(&name.as_str())
+                                && !PATCH_RE.is_match(&name)
+                                && !TRACEROUTE_HOP_RE.is_match(&name)
+                                && !PCIDSS_RE.is_match(&name)
+                            {
+                                unknown_tags.insert(name.clone());
+                            }
+                            current_tag = Some(name);
                         } else {
                             unknown_attrs
                                 .insert(format!("tag {}", String::from_utf8_lossy(a.key.as_ref())));
@@ -371,7 +396,7 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                 } else if let Some(tag) = &current_tag {
                     let val = e.unescape()?.into_owned();
                     if let Some(host) = &mut current_host {
-                        if patch_re.is_match(tag) {
+                        if PATCH_RE.is_match(tag) {
                             let mut patch = empty_patch();
                             patch.name = Some(tag.clone());
                             patch.value = Some(val.clone());
@@ -382,6 +407,21 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                                 "host-fqdn" => host.fqdn = Some(val.clone()),
                                 "netbios-name" => host.netbios = Some(val.clone()),
                                 "operating-system" => host.os = Some(val.clone()),
+                                "mac-address" => host.mac = Some(val.clone()),
+                                "HOST_START" => {
+                                    if let Ok(dt) =
+                                        NaiveDateTime::parse_from_str(&val, "%a %b %d %H:%M:%S %Y")
+                                    {
+                                        host.start = Some(dt);
+                                    }
+                                }
+                                "HOST_END" => {
+                                    if let Ok(dt) =
+                                        NaiveDateTime::parse_from_str(&val, "%a %b %d %H:%M:%S %Y")
+                                    {
+                                        host.end = Some(dt);
+                                    }
+                                }
                                 _ => {}
                             }
                         }
@@ -670,7 +710,7 @@ mod tests {
         assert_eq!(report.patches.len(), 1);
         assert_eq!(report.patches[0].name.as_deref(), Some("MS12-001"));
         assert_eq!(report.patches[0].value.as_deref(), Some("KB123456"));
-        assert_eq!(report.host_properties.len(), 3);
+        assert_eq!(report.host_properties.len(), 13);
         assert!(
             report
                 .host_properties
@@ -757,26 +797,32 @@ mod tests {
         std::fs::write(&file_path, xml).unwrap();
         let report = parse_file(&file_path).expect("parse");
         assert_eq!(report.references.len(), 4);
-        assert!(report
-            .references
-            .iter()
-            .any(|r| r.source.as_deref() == Some("CVE")
-                && r.value.as_deref() == Some("CVE-2023-1111")));
-        assert!(report
-            .references
-            .iter()
-            .any(|r| r.source.as_deref() == Some("BID")
-                && r.value.as_deref() == Some("BID-7654")));
-        assert!(report
-            .references
-            .iter()
-            .any(|r| r.source.as_deref() == Some("CVE")
-                && r.value.as_deref() == Some("CVE-2023-2222")));
-        assert!(report
-            .references
-            .iter()
-            .any(|r| r.source.as_deref() == Some("OSVDB")
-                && r.value.as_deref() == Some("12345")));
+        assert!(
+            report
+                .references
+                .iter()
+                .any(|r| r.source.as_deref() == Some("CVE")
+                    && r.value.as_deref() == Some("CVE-2023-1111"))
+        );
+        assert!(
+            report
+                .references
+                .iter()
+                .any(|r| r.source.as_deref() == Some("BID")
+                    && r.value.as_deref() == Some("BID-7654"))
+        );
+        assert!(
+            report
+                .references
+                .iter()
+                .any(|r| r.source.as_deref() == Some("CVE")
+                    && r.value.as_deref() == Some("CVE-2023-2222"))
+        );
+        assert!(
+            report.references.iter().any(
+                |r| r.source.as_deref() == Some("OSVDB") && r.value.as_deref() == Some("12345")
+            )
+        );
     }
 
     #[test]

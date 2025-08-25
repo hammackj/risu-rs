@@ -2,7 +2,17 @@
   <ReportHost name="192.168.0.1">
     <HostProperties>
       <tag name="host-ip">192.168.0.1</tag>
+      <tag name="host-fqdn">example.local</tag>
+      <tag name="netbios-name">EXAMPLE</tag>
       <tag name="operating-system">Linux</tag>
+      <tag name="mac-address">00:11:22:33:44:55</tag>
+      <tag name="HOST_START">Wed Nov 22 19:12:25 2006</tag>
+      <tag name="HOST_END">Wed Nov 22 19:13:25 2006</tag>
+      <tag name="traceroute_hop_0">192.168.0.1</tag>
+      <tag name="traceroute_hop_1">192.168.1.1</tag>
+      <tag name="pcidss:status">passed</tag>
+      <tag name="pcidss:compliant">yes</tag>
+      <tag name="unknown-prop">foo</tag>
       <tag name="MS12-001">KB123456</tag>
     </HostProperties>
     <ReportItem pluginID="100" port="0" svc_name="" protocol="tcp" severity="0" pluginName="Test Plugin">

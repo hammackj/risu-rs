@@ -1659,6 +1659,7 @@ dependencies = [
  "diesel",
  "diesel_migrations",
  "inventory",
+ "lazy_static",
  "libloading 0.7.4",
  "plotters",
  "predicates",

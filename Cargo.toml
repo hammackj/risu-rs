@@ -29,6 +29,7 @@ rustyline = "13"
 rusqlite = { version = "0.29", features = ["bundled"] }
 rustc_version_runtime = "0.3"
 cargo-lock = "10.1"
+lazy_static = "1.5"
 
 [dev-dependencies]
 assert_cmd = "2.0"

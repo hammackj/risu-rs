@@ -230,10 +230,13 @@ fn run() -> Result<(), error::Error> {
         manager.register(Box::new(templates::ExecutiveSummaryDetailedTemplate));
         manager.register(Box::new(templates::ExploitablitySummaryTemplate));
         manager.register(Box::new(templates::FailedAuditsTemplate));
+        manager.register(Box::new(templates::GraphsTemplate));
         manager.register(Box::new(templates::PluginSummaryTemplate));
         manager.register(Box::new(templates::RollupSummaryTemplate));
         manager.register(Box::new(templates::TalkingPointsTemplate));
         manager.register(Box::new(templates::TechnicalFindingsTemplate));
+        manager.register(Box::new(templates::MSUpdateSummaryTemplate));
+        manager.register(Box::new(templates::NotableTemplate));
         manager.register(Box::new(templates::Top25Template));
         manager.load_templates().map_err(error::Error::Template)?;
         manager.display();
@@ -274,10 +277,13 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::ExecutiveSummaryDetailedTemplate));
             manager.register(Box::new(templates::ExploitablitySummaryTemplate));
             manager.register(Box::new(templates::FailedAuditsTemplate));
+            manager.register(Box::new(templates::GraphsTemplate));
             manager.register(Box::new(templates::PluginSummaryTemplate));
             manager.register(Box::new(templates::RollupSummaryTemplate));
             manager.register(Box::new(templates::TalkingPointsTemplate));
             manager.register(Box::new(templates::TechnicalFindingsTemplate));
+            manager.register(Box::new(templates::MSUpdateSummaryTemplate));
+            manager.register(Box::new(templates::NotableTemplate));
             manager.register(Box::new(templates::Top25Template));
             manager.load_templates().map_err(error::Error::Template)?;
             let tmpl = manager.get(&tmpl_name).ok_or_else(|| {

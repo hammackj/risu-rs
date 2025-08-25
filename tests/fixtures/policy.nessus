@@ -1,0 +1,37 @@
+<NessusClientData_v2>
+  <Policy>
+    <policyName>basic</policyName>
+    <policyComments>hello</policyComments>
+    <Preferences>
+      <ServerPreferences>
+        <preference>
+          <name>somepref</name>
+          <value>val</value>
+        </preference>
+      </ServerPreferences>
+      <PluginPreferences>
+        <item>
+          <pluginId>1</pluginId>
+          <fullname>Name</fullname>
+          <preferenceName>pref</preferenceName>
+          <preferenceType>type</preferenceType>
+          <selectedValue>value</selectedValue>
+        </item>
+      </PluginPreferences>
+    </Preferences>
+    <FamilySelection>
+      <FamilyItem>
+        <FamilyName>General</FamilyName>
+        <Status>enabled</Status>
+      </FamilyItem>
+    </FamilySelection>
+    <IndividualPluginSelection>
+      <PluginItem>
+        <PluginID>1</PluginID>
+        <PluginName>plug</PluginName>
+        <PluginFamily>General</PluginFamily>
+        <Status>enabled</Status>
+      </PluginItem>
+    </IndividualPluginSelection>
+  </Policy>
+</NessusClientData_v2>

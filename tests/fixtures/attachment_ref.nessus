@@ -1,0 +1,10 @@
+<NessusClientData_v2>
+  <ReportHost name="h">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="1" severity="0" pluginName="plug">
+      <attachment name="a.txt" type="text/plain">aGVsbG8=</attachment>
+      <ref source="CVE">CVE-1234-5678</ref>
+      <xref>CVE-1111-2222</xref>
+    </ReportItem>
+  </ReportHost>
+</NessusClientData_v2>

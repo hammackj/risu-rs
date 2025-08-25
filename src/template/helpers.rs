@@ -8,6 +8,7 @@ use diesel::sqlite::SqliteConnection;
 
 use crate::graphs::{TopVulnGraph, WindowsOsGraph};
 use crate::models::{Attachment, FamilySelection, HostProperty, PolicyPlugin};
+use crate::renderer::Renderer;
 
 /// Produce a message indicating the operating system is unsupported.
 pub fn unsupported_os(os: &str) -> String {
@@ -17,6 +18,15 @@ pub fn unsupported_os(os: &str) -> String {
 /// Format text as a second-level heading.
 pub fn heading2(text: &str) -> String {
     format!("## {text}")
+}
+
+/// Record a section heading for navigation structures via the renderer.
+pub fn section(
+    renderer: &mut dyn Renderer,
+    level: usize,
+    title: &str,
+) -> Result<(), Box<dyn Error>> {
+    renderer.heading(level, title)
 }
 
 /// Embed a graph image as a base64 data URI.

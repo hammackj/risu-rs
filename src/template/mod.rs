@@ -111,7 +111,7 @@ impl Template for SimpleTemplate {
             .get("title")
             .map(String::as_str)
             .unwrap_or("Simple Report");
-        renderer.text(title)?;
+        renderer.heading(1, title)?;
         renderer.text(&format!("Hosts: {}", report.hosts.len()))?;
 
         // Generate example graphs in the system temporary directory.

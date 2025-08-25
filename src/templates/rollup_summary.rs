@@ -28,6 +28,9 @@ impl Template for RollupSummaryTemplate {
         let mut print_group = |sev: i32, label: &str| -> Result<(), Box<dyn Error>> {
             let mut unique: BTreeMap<i32, String> = BTreeMap::new();
             for item in &report.items {
+                if item.rollup_finding == Some(true) {
+                    continue;
+                }
                 if item.severity == Some(sev) {
                     if let Some(pid) = item.plugin_id {
                         let name = item.plugin_name.clone().unwrap_or_default();

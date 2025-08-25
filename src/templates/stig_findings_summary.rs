@@ -28,6 +28,9 @@ impl Template for StigFindingsSummaryTemplate {
         // Summarize counts by severity level.
         let mut counts = [0usize; 5];
         for item in &report.items {
+            if item.rollup_finding == Some(true) {
+                continue;
+            }
             if let Some(sev) = item.severity {
                 if (0..5).contains(&sev) {
                     counts[sev as usize] += 1;

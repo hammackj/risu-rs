@@ -24,6 +24,7 @@ fn run_rollup(
                 }
                 item.real_severity = item.severity;
                 item.severity = Some(-1);
+                item.rollup_finding = Some(true);
             }
         }
     }

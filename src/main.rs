@@ -1,7 +1,7 @@
 //! Command-line interface for `risu-rs`.
 //!
 //! ```text
-//! risu-rs create-config              # write default config.yml
+//! risu-rs --create-config-file       # write default config.yml
 //! risu-rs --create-tables            # run database migrations
 //! risu-rs --test-connection          # check database connection
 //! risu-rs parse scan.nessus -o out.csv -t simple --post-process
@@ -68,14 +68,18 @@ struct Cli {
     /// Test database connection
     #[arg(long)]
     test_connection: bool,
+    /// Path to configuration file
+    #[arg(long = "config-file", value_name = "path")]
+    config_file: Option<std::path::PathBuf>,
+    /// Write a default configuration file and exit
+    #[arg(long = "create-config-file", value_name = "path")]
+    create_config_file: Option<Option<std::path::PathBuf>>,
     #[command(subcommand)]
     command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Generate a configuration file with default values
-    CreateConfig,
     /// Parse an input file and post process it
     Parse {
         /// File to parse
@@ -156,6 +160,27 @@ fn run() -> Result<(), error::Error> {
     };
     init_logging(level, &cli.log_format);
 
+    let config_path = cli
+        .config_file
+        .clone()
+        .unwrap_or_else(|| std::path::PathBuf::from("config.yml"));
+
+    if let Some(path_opt) = cli.create_config_file {
+        let path = path_opt.unwrap_or_else(|| config_path.clone());
+        config::create_config(&path)?;
+        println!("Created configuration file at {}", path.display());
+        return Ok(());
+    }
+
+    if let Some(ref path) = cli.config_file {
+        if !path.exists() {
+            return Err(error::Error::Config(format!(
+                "configuration file '{}' not found",
+                path.display()
+            )));
+        }
+    }
+
     if cli.create_tables || cli.drop_tables {
         migrate::run(cli.create_tables, cli.drop_tables)?;
         println!("Migration complete");
@@ -163,7 +188,7 @@ fn run() -> Result<(), error::Error> {
     }
 
     if cli.test_connection {
-        let cfg = config::load_config(std::path::Path::new("config.yml")).unwrap_or_default();
+        let cfg = config::load_config(&config_path).unwrap_or_default();
         match SqliteConnection::establish(&cfg.database_url) {
             Ok(_) => println!("Database connection successful"),
             Err(e) => {
@@ -175,7 +200,7 @@ fn run() -> Result<(), error::Error> {
     }
 
     if cli.console {
-        console::run()?;
+        console::run(&config_path)?;
         return Ok(());
     }
 
@@ -185,7 +210,7 @@ fn run() -> Result<(), error::Error> {
     }
 
     if cli.list_templates {
-        let cfg = config::load_config(std::path::Path::new("config.yml")).unwrap_or_default();
+        let cfg = config::load_config(&config_path).unwrap_or_default();
         let paths = cfg
             .template_paths
             .iter()
@@ -216,10 +241,6 @@ fn run() -> Result<(), error::Error> {
     }
 
     match cli.command {
-        Some(Commands::CreateConfig) => {
-            let path = std::path::Path::new("config.yml");
-            config::create_config(path)?;
-        }
         Some(Commands::Parse {
             file,
             template: tmpl_name,
@@ -233,7 +254,7 @@ fn run() -> Result<(), error::Error> {
                 postprocess::process(&mut report);
             }
 
-            let cfg = config::load_config(std::path::Path::new("config.yml")).unwrap_or_default();
+            let cfg = config::load_config(&config_path).unwrap_or_default();
             let paths = cfg
                 .template_paths
                 .iter()

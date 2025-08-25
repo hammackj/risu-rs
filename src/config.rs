@@ -58,6 +58,12 @@ fn default_template_paths() -> Vec<String> {
 
 /// Write a configuration file containing default values to the given path.
 pub fn create_config(path: &Path) -> Result<(), crate::error::Error> {
+    if path.exists() {
+        return Err(crate::error::Error::Config(format!(
+            "configuration file '{}' already exists",
+            path.display()
+        )));
+    }
     let cfg = Config::default();
     let yaml = serde_yaml::to_string(&cfg)?;
     fs::write(path, yaml)?;
@@ -67,6 +73,12 @@ pub fn create_config(path: &Path) -> Result<(), crate::error::Error> {
 /// Load configuration from the given path, falling back to defaults when
 /// values are missing or empty.
 pub fn load_config(path: &Path) -> Result<Config, crate::error::Error> {
+    if !path.exists() {
+        return Err(crate::error::Error::Config(format!(
+            "configuration file '{}' not found",
+            path.display()
+        )));
+    }
     let raw = fs::read_to_string(path)?;
     let mut cfg: Config = serde_yaml::from_str(&raw).unwrap_or_default();
 

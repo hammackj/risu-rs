@@ -5,7 +5,7 @@ A Rust rewrite of the Risu reporting utilities.
 ## Command-line usage
 
 ```bash
-risu-rs create-config              # write default config.yml
+risu-rs --create-config-file       # write default config.yml
 risu-rs migrate --create-tables    # run database migrations
 risu-rs parse scan.nessus -o report.csv -t simple --post-process
 risu-rs parse scan.nessus -o report.pdf -t simple --template-arg title="Custom Title"
@@ -15,7 +15,7 @@ risu-rs --list-post-process        # list post-process plugins
 
 ## Configuration
 
-Settings are read from `config.yml`:
+Settings are read from a YAML file (default: `config.yml`):
 
 ```yaml
 database_url: sqlite://:memory:

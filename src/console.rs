@@ -5,8 +5,8 @@ use std::path::Path;
 
 use crate::{config, error, models};
 
-pub fn run() -> Result<(), error::Error> {
-    let cfg = config::load_config(Path::new("config.yml")).unwrap_or_default();
+pub fn run(config_path: &Path) -> Result<(), error::Error> {
+    let cfg = config::load_config(config_path).unwrap_or_default();
     let mut dconn = SqliteConnection::establish(&cfg.database_url)?;
     let db_path = cfg
         .database_url

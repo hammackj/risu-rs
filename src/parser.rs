@@ -12,7 +12,8 @@ use tracing::{debug, info};
 
 use crate::models::{
     Attachment, FamilySelection, Host, HostProperty, Item, Patch, Plugin,
-    PluginPreference, Policy, PolicyPlugin, ServerPreference, ServiceDescription,
+    PluginPreference, Policy, PolicyPlugin, Reference, ServerPreference,
+    ServiceDescription,
 };
 use base64::{Engine, engine::general_purpose};
 use regex::Regex;
@@ -28,6 +29,7 @@ pub struct NessusReport {
     pub attachments: Vec<Attachment>,
     pub host_properties: Vec<HostProperty>,
     pub service_descriptions: Vec<ServiceDescription>,
+    pub references: Vec<Reference>,
     pub policies: Vec<Policy>,
     pub policy_plugins: Vec<PolicyPlugin>,
     pub family_selections: Vec<FamilySelection>,
@@ -73,11 +75,18 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
 
     struct PendingAttachment {
         name: String,
-        content_type: Option<String>,
-        data: String,
+       content_type: Option<String>,
+       data: String,
     }
 
     let mut current_attachment: Option<PendingAttachment> = None;
+
+    struct PendingReference {
+        source: Option<String>,
+        value: String,
+    }
+
+    let mut current_reference: Option<PendingReference> = None;
 
     let patch_re = Regex::new("(?i)ms\\d{2}-\\d+").unwrap();
 
@@ -210,6 +219,29 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         data: String::new(),
                     });
                 }
+                b"ref" => {
+                    let mut src = None;
+                    for a in e.attributes().flatten() {
+                        if a.key.as_ref() == b"source" {
+                            src = Some(a.unescape_value()?.to_string());
+                        } else {
+                            unknown_attrs.insert(format!(
+                                "ref {}",
+                                String::from_utf8_lossy(a.key.as_ref())
+                            ));
+                        }
+                    }
+                    current_reference = Some(PendingReference {
+                        source: src,
+                        value: String::new(),
+                    });
+                }
+                b"xref" => {
+                    current_reference = Some(PendingReference {
+                        source: None,
+                        value: String::new(),
+                    });
+                }
                 b"plugin_output" => {
                     current_plugin_output = Some(String::new());
                 }
@@ -218,7 +250,9 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                 }
             },
             Event::Text(e) => {
-                if let Some(att) = &mut current_attachment {
+                if let Some(r) = &mut current_reference {
+                    r.value.push_str(&e.unescape()?.into_owned());
+                } else if let Some(att) = &mut current_attachment {
                     att.data.push_str(&e.unescape()?.into_owned());
                 } else if let Some(out) = &mut current_plugin_output {
                     out.push_str(&e.unescape()?.into_owned());
@@ -303,6 +337,30 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         if let Some(item) = report.items.last_mut() {
                             item.attachment_id = Some(id);
                         }
+                    }
+                }
+                b"ref" | b"xref" => {
+                    if let Some(p) = current_reference.take() {
+                        let mut reference = Reference::default();
+                        if let Some(idx) = current_item_index {
+                            reference.item_id = Some(idx);
+                            reference.plugin_id = report
+                                .items
+                                .get(idx as usize)
+                                .and_then(|it| it.plugin_id);
+                        }
+                        let mut src = p.source;
+                        if src.is_none() {
+                            let v_upper = p.value.to_uppercase();
+                            if v_upper.starts_with("CVE") {
+                                src = Some("CVE".to_string());
+                            } else if v_upper.starts_with("BID") {
+                                src = Some("BID".to_string());
+                            }
+                        }
+                        reference.source = src;
+                        reference.value = Some(p.value.trim().to_string());
+                        report.references.push(reference);
                     }
                 }
                 _ => {}

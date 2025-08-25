@@ -126,6 +126,32 @@ pub fn server_preference(
         .map(|r| r.flatten())
 }
 
+/// Fetch CVE identifiers for a given finding (item).
+pub fn cve_identifiers(
+    conn: &mut SqliteConnection,
+    item_id_val: i32,
+) -> QueryResult<Vec<String>> {
+    use crate::schema::nessus_references::dsl::*;
+    nessus_references
+        .filter(item_id.eq(item_id_val).and(source.eq("CVE")))
+        .select(value)
+        .load::<Option<String>>(conn)
+        .map(|vals| vals.into_iter().flatten().collect())
+}
+
+/// Fetch BID identifiers for a given finding (item).
+pub fn bid_identifiers(
+    conn: &mut SqliteConnection,
+    item_id_val: i32,
+) -> QueryResult<Vec<String>> {
+    use crate::schema::nessus_references::dsl::*;
+    nessus_references
+        .filter(item_id.eq(item_id_val).and(source.eq("BID")))
+        .select(value)
+        .load::<Option<String>>(conn)
+        .map(|vals| vals.into_iter().flatten().collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -173,7 +199,10 @@ mod tests {
     }
 
     use crate::migrate::MIGRATIONS;
-    use crate::schema::{nessus_host_properties, nessus_hosts};
+    use crate::schema::{
+        nessus_host_properties, nessus_hosts, nessus_items, nessus_plugins,
+        nessus_references,
+    };
     use crate::schema::{
         nessus_family_selections, nessus_policy_plugins, nessus_policies,
         nessus_server_preferences,
@@ -223,6 +252,30 @@ mod tests {
     struct NewServerPreference<'a> {
         policy_id: Option<i32>,
         name: Option<&'a str>,
+        value: Option<&'a str>,
+    }
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_plugins)]
+    struct NewPlugin<'a> {
+        plugin_id: Option<i32>,
+        plugin_name: Option<&'a str>,
+    }
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_items)]
+    struct NewItem<'a> {
+        host_id: Option<i32>,
+        plugin_id: Option<i32>,
+        plugin_name: Option<&'a str>,
+    }
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_references)]
+    struct NewReference<'a> {
+        plugin_id: Option<i32>,
+        item_id: Option<i32>,
+        source: Option<&'a str>,
         value: Option<&'a str>,
     }
 
@@ -301,5 +354,53 @@ mod tests {
 
         let pref = server_preference(&mut conn, 1, "opt").unwrap();
         assert_eq!(pref.as_deref(), Some("1"));
+    }
+
+    #[test]
+    fn reference_queries() {
+        let mut conn = setup();
+        diesel::insert_into(nessus_hosts::table)
+            .values(&NewHost {
+                ip: Some("10.0.0.1"),
+            })
+            .execute(&mut conn)
+            .unwrap();
+        diesel::insert_into(nessus_plugins::table)
+            .values(&NewPlugin {
+                plugin_id: Some(1),
+                plugin_name: Some("plug"),
+            })
+            .execute(&mut conn)
+            .unwrap();
+        diesel::insert_into(nessus_items::table)
+            .values(&NewItem {
+                host_id: Some(1),
+                plugin_id: Some(1),
+                plugin_name: Some("plug"),
+            })
+            .execute(&mut conn)
+            .unwrap();
+        diesel::insert_into(nessus_references::table)
+            .values(&[
+                NewReference {
+                    plugin_id: Some(1),
+                    item_id: Some(1),
+                    source: Some("CVE"),
+                    value: Some("CVE-2023-0001"),
+                },
+                NewReference {
+                    plugin_id: Some(1),
+                    item_id: Some(1),
+                    source: Some("BID"),
+                    value: Some("BID-1000"),
+                },
+            ])
+            .execute(&mut conn)
+            .unwrap();
+
+        let cves = cve_identifiers(&mut conn, 1).unwrap();
+        assert_eq!(cves, vec!["CVE-2023-0001".to_string()]);
+        let bids = bid_identifiers(&mut conn, 1).unwrap();
+        assert_eq!(bids, vec!["BID-1000".to_string()]);
     }
 }

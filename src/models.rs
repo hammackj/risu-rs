@@ -12,6 +12,7 @@ pub mod family_selection;
 pub mod plugin_preference;
 pub mod policy_plugin;
 pub mod server_preference;
+pub mod reference;
 
 pub use attachment::Attachment;
 pub use host_property::HostProperty;
@@ -21,6 +22,7 @@ pub use family_selection::FamilySelection;
 pub use plugin_preference::PluginPreference;
 pub use policy_plugin::PolicyPlugin;
 pub use server_preference::ServerPreference;
+pub use reference::Reference;
 
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;

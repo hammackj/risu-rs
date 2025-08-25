@@ -1,5 +1,6 @@
 //! Utilities for parsing vulnerability scan reports into in-memory models.
 
+mod nexpose;
 mod simple_nexpose;
 
 use std::collections::BTreeSet;
@@ -11,9 +12,8 @@ use quick_xml::events::Event;
 use tracing::{debug, info};
 
 use crate::models::{
-    Attachment, FamilySelection, Host, HostProperty, Item, Patch, Plugin,
-    PluginPreference, Policy, PolicyPlugin, Reference, ServerPreference,
-    ServiceDescription,
+    Attachment, FamilySelection, Host, HostProperty, Item, Patch, Plugin, PluginPreference, Policy,
+    PolicyPlugin, Reference, ServerPreference, ServiceDescription,
 };
 use base64::{Engine, engine::general_purpose};
 use regex::Regex;
@@ -49,6 +49,13 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
             let report = simple_nexpose::parse_file(path)?;
             Ok(report.into())
         }
+        Some("xml") => {
+            if nexpose::nexpose_document::is_nexpose(path)? {
+                nexpose::nexpose_document::parse_file(path)
+            } else {
+                parse_nessus(path)
+            }
+        }
         _ => parse_nessus(path),
     }
 }
@@ -75,8 +82,8 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
 
     struct PendingAttachment {
         name: String,
-       content_type: Option<String>,
-       data: String,
+        content_type: Option<String>,
+        data: String,
     }
 
     let mut current_attachment: Option<PendingAttachment> = None;
@@ -225,10 +232,8 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         if a.key.as_ref() == b"source" {
                             src = Some(a.unescape_value()?.to_string());
                         } else {
-                            unknown_attrs.insert(format!(
-                                "ref {}",
-                                String::from_utf8_lossy(a.key.as_ref())
-                            ));
+                            unknown_attrs
+                                .insert(format!("ref {}", String::from_utf8_lossy(a.key.as_ref())));
                         }
                     }
                     current_reference = Some(PendingReference {
@@ -344,10 +349,8 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         let mut reference = Reference::default();
                         if let Some(idx) = current_item_index {
                             reference.item_id = Some(idx);
-                            reference.plugin_id = report
-                                .items
-                                .get(idx as usize)
-                                .and_then(|it| it.plugin_id);
+                            reference.plugin_id =
+                                report.items.get(idx as usize).and_then(|it| it.plugin_id);
                         }
                         let mut src = p.source;
                         if src.is_none() {
@@ -404,8 +407,8 @@ fn parse_policy<R: std::io::BufRead>(
         Vec<PluginPreference>,
         Vec<ServerPreference>,
     ),
-    crate::error::Error>
-{
+    crate::error::Error,
+> {
     let mut policy = Policy::default();
     let mut policy_plugins = Vec::new();
     let mut family_selections = Vec::new();
@@ -433,7 +436,8 @@ fn parse_policy<R: std::io::BufRead>(
                     current_tag = Some("FamilyName".to_string());
                 }
                 b"item" => current_pref = Some(PluginPreference::default()),
-                b"pluginId" | b"fullname" | b"preferenceName" | b"preferenceType" | b"selectedValue" => {
+                b"pluginId" | b"fullname" | b"preferenceName" | b"preferenceType"
+                | b"selectedValue" => {
                     current_tag = Some(String::from_utf8_lossy(e.name().as_ref()).to_string());
                 }
                 b"preference" => current_server_pref = Some(ServerPreference::default()),
@@ -484,20 +488,11 @@ fn parse_policy<R: std::io::BufRead>(
                 }
             }
             Event::End(e) => match e.name().as_ref() {
-                b"policyName"
-                | b"policyComments"
-                | b"PluginID"
-                | b"PluginName"
-                | b"PluginFamily"
-                | b"Status"
-                | b"FamilyName"
-                | b"pluginId"
-                | b"fullname"
-                | b"preferenceName"
-                | b"preferenceType"
-                | b"selectedValue"
-                | b"name"
-                | b"value" => current_tag = None,
+                b"policyName" | b"policyComments" | b"PluginID" | b"PluginName"
+                | b"PluginFamily" | b"Status" | b"FamilyName" | b"pluginId" | b"fullname"
+                | b"preferenceName" | b"preferenceType" | b"selectedValue" | b"name" | b"value" => {
+                    current_tag = None
+                }
                 b"PluginItem" => {
                     if let Some(p) = current_plugin.take() {
                         policy_plugins.push(p);
@@ -619,9 +614,15 @@ mod tests {
         std::fs::write(&file_path, xml).unwrap();
         let report = parse_file(&file_path).expect("parse");
         assert_eq!(report.service_descriptions.len(), 1);
-        assert_eq!(report.service_descriptions[0].description.as_deref(), Some("Apache httpd"));
+        assert_eq!(
+            report.service_descriptions[0].description.as_deref(),
+            Some("Apache httpd")
+        );
         assert_eq!(report.service_descriptions[0].port, Some(80));
-        assert_eq!(report.service_descriptions[0].svc_name.as_deref(), Some("http"));
+        assert_eq!(
+            report.service_descriptions[0].svc_name.as_deref(),
+            Some("http")
+        );
     }
 }
 

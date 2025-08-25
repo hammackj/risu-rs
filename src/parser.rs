@@ -295,7 +295,29 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                 b"plugin_output" => {
                     current_plugin_output = Some(String::new());
                 }
-                b"description" | b"solution" | b"risk_factor" | b"cvss_base_score" => {
+                b"description"
+                | b"solution"
+                | b"risk_factor"
+                | b"cvss_base_score"
+                | b"cm:compliance-info"
+                | b"cm:compliance-actual-value"
+                | b"cm:compliance-check-id"
+                | b"cm:compliance-policy-value"
+                | b"cm:compliance-audit-file"
+                | b"cm:compliance-check-name"
+                | b"cm:compliance-result"
+                | b"cm:compliance-output"
+                | b"cm:compliance-reference"
+                | b"cm:compliance-see-also"
+                | b"cm:compliance-solution"
+                | b"cm:compliance"
+                | b"cm:root-cause"
+                | b"cm:agent"
+                | b"cm:potential-vulnerability"
+                | b"cm:in-the-news"
+                | b"cm:exploited-by-nessus"
+                | b"cm:unsupported-by-vendor"
+                | b"cm:default-account" => {
                     if current_item_index.is_some() {
                         current_item_tag =
                             Some(String::from_utf8_lossy(e.name().as_ref()).to_string());
@@ -389,6 +411,178 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                                         }
                                     }
                                 }
+                                "cm:compliance-info" => {
+                                    item.cm_compliance_info = Some(text.clone());
+                                }
+                                "cm:compliance-actual-value" => {
+                                    item.cm_compliance_actual_value = Some(text.clone());
+                                }
+                                "cm:compliance-check-id" => {
+                                    item.cm_compliance_check_id = Some(text.clone());
+                                }
+                                "cm:compliance-policy-value" => {
+                                    item.cm_compliance_policy_value = Some(text.clone());
+                                }
+                                "cm:compliance-audit-file" => {
+                                    item.cm_compliance_audit_file = Some(text.clone());
+                                }
+                                "cm:compliance-check-name" => {
+                                    item.cm_compliance_check_name = Some(text.clone());
+                                }
+                                "cm:compliance-result" => {
+                                    item.cm_compliance_result = Some(text.clone());
+                                }
+                                "cm:compliance-output" => {
+                                    item.cm_compliance_output = Some(text.clone());
+                                }
+                                "cm:compliance-reference" => {
+                                    item.cm_compliance_reference = Some(text.clone());
+                                }
+                                "cm:compliance-see-also" => {
+                                    item.cm_compliance_see_also = Some(text.clone());
+                                }
+                                "cm:compliance-solution" => {
+                                    item.cm_compliance_solution = Some(text.clone());
+                                }
+                                "cm:compliance" => {
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.compliance.is_none() {
+                                                plugin.compliance = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "cm:root-cause" => {
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.root_cause.is_none() {
+                                                plugin.root_cause = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "cm:agent" => {
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.agent.is_none() {
+                                                plugin.agent = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "cm:potential-vulnerability" => {
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.potential_vulnerability.is_none() {
+                                                plugin.potential_vulnerability =
+                                                    if text.eq_ignore_ascii_case("true") {
+                                                        Some(true)
+                                                    } else if text.eq_ignore_ascii_case("false") {
+                                                        Some(false)
+                                                    } else {
+                                                        None
+                                                    };
+                                            }
+                                        }
+                                    }
+                                }
+                                "cm:in-the-news" => {
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.in_the_news.is_none() {
+                                                plugin.in_the_news =
+                                                    if text.eq_ignore_ascii_case("true") {
+                                                        Some(true)
+                                                    } else if text.eq_ignore_ascii_case("false") {
+                                                        Some(false)
+                                                    } else {
+                                                        None
+                                                    };
+                                            }
+                                        }
+                                    }
+                                }
+                                "cm:exploited-by-nessus" => {
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.exploited_by_nessus.is_none() {
+                                                plugin.exploited_by_nessus =
+                                                    if text.eq_ignore_ascii_case("true") {
+                                                        Some(true)
+                                                    } else if text.eq_ignore_ascii_case("false") {
+                                                        Some(false)
+                                                    } else {
+                                                        None
+                                                    };
+                                            }
+                                        }
+                                    }
+                                }
+                                "cm:unsupported-by-vendor" => {
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.unsupported_by_vendor.is_none() {
+                                                plugin.unsupported_by_vendor =
+                                                    if text.eq_ignore_ascii_case("true") {
+                                                        Some(true)
+                                                    } else if text.eq_ignore_ascii_case("false") {
+                                                        Some(false)
+                                                    } else {
+                                                        None
+                                                    };
+                                            }
+                                        }
+                                    }
+                                }
+                                "cm:default-account" => {
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.default_account.is_none() {
+                                                plugin.default_account =
+                                                    if text.eq_ignore_ascii_case("true") {
+                                                        Some(true)
+                                                    } else if text.eq_ignore_ascii_case("false") {
+                                                        Some(false)
+                                                    } else {
+                                                        None
+                                                    };
+                                            }
+                                        }
+                                    }
+                                }
                                 _ => {}
                             }
                         }
@@ -437,6 +631,9 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     current_tag = None;
                 }
                 b"description" | b"solution" | b"risk_factor" | b"cvss_base_score" => {
+                    current_item_tag = None;
+                }
+                name if name.starts_with(b"cm:") => {
                     current_item_tag = None;
                 }
                 b"plugin_output" => {

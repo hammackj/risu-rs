@@ -20,6 +20,26 @@ impl Write for VecWriter {
 }
 
 #[test]
+fn parses_cm_prefixed_tags() {
+    let sample = fs::canonicalize("tests/fixtures/cm_tags.nessus").unwrap();
+    let report = parse_file(&sample).unwrap();
+
+    let item = report.items.first().expect("item");
+    assert_eq!(item.cm_compliance_info.as_deref(), Some("info"));
+    assert_eq!(item.cm_compliance_result.as_deref(), Some("Failed"));
+
+    let plugin = report
+        .plugins
+        .iter()
+        .find(|p| p.plugin_id == Some(1))
+        .unwrap();
+    assert_eq!(plugin.root_cause.as_deref(), Some("rc"));
+    assert_eq!(plugin.agent.as_deref(), Some("nessus"));
+    assert_eq!(plugin.potential_vulnerability, Some(true));
+    assert_eq!(plugin.default_account, Some(false));
+}
+
+#[test]
 fn parses_traceroute_pcidss_and_logs_unknown() {
     let sample = fs::canonicalize("tests/fixtures/sample.nessus").unwrap();
 

@@ -5,32 +5,32 @@
 //! implemented at the moment.
 
 pub mod attachment;
-pub mod host_property;
-pub mod service_description;
-pub mod policy;
 pub mod family_selection;
+pub mod host_property;
+pub mod plugin_metadata;
 pub mod plugin_preference;
+pub mod policy;
 pub mod policy_plugin;
-pub mod server_preference;
 pub mod reference;
+pub mod server_preference;
+pub mod service_description;
 
 pub use attachment::Attachment;
-pub use host_property::HostProperty;
-pub use service_description::ServiceDescription;
-pub use policy::Policy;
 pub use family_selection::FamilySelection;
+pub use host_property::HostProperty;
+pub use plugin_metadata::NessusPluginMetadata;
 pub use plugin_preference::PluginPreference;
+pub use policy::Policy;
 pub use policy_plugin::PolicyPlugin;
-pub use server_preference::ServerPreference;
 pub use reference::Reference;
+pub use server_preference::ServerPreference;
+pub use service_description::ServiceDescription;
 
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::net::IpAddr;
 
-use crate::schema::{
-    nessus_hosts, nessus_items, nessus_patches, nessus_plugins,
-};
+use crate::schema::{nessus_hosts, nessus_items, nessus_patches, nessus_plugins};
 
 #[derive(Debug, Queryable, Identifiable)]
 #[diesel(table_name = nessus_hosts)]

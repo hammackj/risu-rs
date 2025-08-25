@@ -127,10 +127,7 @@ pub fn server_preference(
 }
 
 /// Fetch CVE identifiers for a given finding (item).
-pub fn cve_identifiers(
-    conn: &mut SqliteConnection,
-    item_id_val: i32,
-) -> QueryResult<Vec<String>> {
+pub fn cve_identifiers(conn: &mut SqliteConnection, item_id_val: i32) -> QueryResult<Vec<String>> {
     use crate::schema::nessus_references::dsl::*;
     nessus_references
         .filter(item_id.eq(item_id_val).and(source.eq("CVE")))
@@ -140,16 +137,37 @@ pub fn cve_identifiers(
 }
 
 /// Fetch BID identifiers for a given finding (item).
-pub fn bid_identifiers(
-    conn: &mut SqliteConnection,
-    item_id_val: i32,
-) -> QueryResult<Vec<String>> {
+pub fn bid_identifiers(conn: &mut SqliteConnection, item_id_val: i32) -> QueryResult<Vec<String>> {
     use crate::schema::nessus_references::dsl::*;
     nessus_references
         .filter(item_id.eq(item_id_val).and(source.eq("BID")))
         .select(value)
         .load::<Option<String>>(conn)
         .map(|vals| vals.into_iter().flatten().collect())
+}
+
+/// Fetch CVE identifiers for a plugin via indexed metadata.
+pub fn plugin_cve_identifiers(
+    conn: &mut SqliteConnection,
+    plugin_id_val: i32,
+) -> QueryResult<Vec<String>> {
+    use crate::models::NessusPluginMetadata;
+    Ok(NessusPluginMetadata::by_plugin_id(conn, plugin_id_val)?
+        .and_then(|md| md.cve)
+        .map(|s| s.split(',').map(|c| c.trim().to_string()).collect())
+        .unwrap_or_default())
+}
+
+/// Fetch BID identifiers for a plugin via indexed metadata.
+pub fn plugin_bid_identifiers(
+    conn: &mut SqliteConnection,
+    plugin_id_val: i32,
+) -> QueryResult<Vec<String>> {
+    use crate::models::NessusPluginMetadata;
+    Ok(NessusPluginMetadata::by_plugin_id(conn, plugin_id_val)?
+        .and_then(|md| md.bid)
+        .map(|s| s.split(',').map(|b| b.trim().to_string()).collect())
+        .unwrap_or_default())
 }
 
 #[cfg(test)]
@@ -200,12 +218,11 @@ mod tests {
 
     use crate::migrate::MIGRATIONS;
     use crate::schema::{
-        nessus_host_properties, nessus_hosts, nessus_items, nessus_plugins,
-        nessus_references,
+        nessus_family_selections, nessus_policies, nessus_policy_plugins, nessus_server_preferences,
     };
     use crate::schema::{
-        nessus_family_selections, nessus_policy_plugins, nessus_policies,
-        nessus_server_preferences,
+        nessus_host_properties, nessus_hosts, nessus_items, nessus_plugin_metadata, nessus_plugins,
+        nessus_references,
     };
     use diesel::sqlite::SqliteConnection;
     use diesel_migrations::MigrationHarness;
@@ -277,6 +294,15 @@ mod tests {
         item_id: Option<i32>,
         source: Option<&'a str>,
         value: Option<&'a str>,
+    }
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_plugin_metadata)]
+    struct NewPluginMetadata<'a> {
+        script_id: Option<i32>,
+        script_name: Option<&'a str>,
+        cve: Option<&'a str>,
+        bid: Option<&'a str>,
     }
 
     fn setup() -> SqliteConnection {
@@ -402,5 +428,24 @@ mod tests {
         assert_eq!(cves, vec!["CVE-2023-0001".to_string()]);
         let bids = bid_identifiers(&mut conn, 1).unwrap();
         assert_eq!(bids, vec!["BID-1000".to_string()]);
+    }
+
+    #[test]
+    fn plugin_metadata_queries() {
+        let mut conn = setup();
+        diesel::insert_into(nessus_plugin_metadata::table)
+            .values(&NewPluginMetadata {
+                script_id: Some(99),
+                script_name: Some("plug"),
+                cve: Some("CVE-2023-0001,CVE-2023-0002"),
+                bid: Some("BID-1000,BID-1001"),
+            })
+            .execute(&mut conn)
+            .unwrap();
+
+        let cves = plugin_cve_identifiers(&mut conn, 99).unwrap();
+        assert_eq!(cves, vec!["CVE-2023-0001", "CVE-2023-0002"]);
+        let bids = plugin_bid_identifiers(&mut conn, 99).unwrap();
+        assert_eq!(bids, vec!["BID-1000", "BID-1001"]);
     }
 }

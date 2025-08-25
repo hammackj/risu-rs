@@ -89,6 +89,11 @@ fn parses_attachments_and_references() {
     let report = parse_file(&path).unwrap();
     assert_eq!(report.attachments.len(), 1);
     assert_eq!(report.attachments[0].name.as_deref(), Some("a.txt"));
+    assert_eq!(
+        report.attachments[0].ahash.as_deref(),
+        Some("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
+    );
+    assert_eq!(report.attachments[0].value.as_deref(), Some("aGVsbG8="));
     assert_eq!(report.items[0].attachment_id, Some(0));
     let saved = dir.path().join("a.txt");
     assert!(saved.exists());

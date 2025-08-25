@@ -215,6 +215,8 @@ mod tests {
             content_type: Some("text/plain".into()),
             path: Some(file_path.to_string_lossy().to_string()),
             size: Some(2),
+            ahash: None,
+            value: None,
         };
         let data = embed_attachment(&att).unwrap();
         assert!(data.starts_with("data:text/plain;base64,"));

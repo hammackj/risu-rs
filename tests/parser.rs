@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use risu_rs::parser::parse_file;
 use tracing::Level;
 use tracing_subscriber::fmt;
+use tempfile::tempdir;
 
 struct VecWriter(Arc<Mutex<Vec<u8>>>);
 
@@ -76,4 +77,92 @@ fn parses_traceroute_pcidss_and_logs_unknown() {
     assert!(logs.contains("Unknown host properties encountered"));
     assert!(logs.contains("unknown-tag"));
     assert!(logs.contains("unknown-prop"));
+}
+
+#[test]
+fn parses_attachments_and_references() {
+    let xml = fs::read("tests/fixtures/attachment_ref.nessus").unwrap();
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("attachment_ref.nessus");
+    fs::write(&path, xml).unwrap();
+
+    let report = parse_file(&path).unwrap();
+    assert_eq!(report.attachments.len(), 1);
+    assert_eq!(report.attachments[0].name.as_deref(), Some("a.txt"));
+    assert_eq!(report.items[0].attachment_id, Some(0));
+    let saved = dir.path().join("a.txt");
+    assert!(saved.exists());
+    let data = fs::read(saved).unwrap();
+    assert_eq!(data, b"hello");
+
+    let refs: Vec<(Option<String>, Option<String>)> = report
+        .references
+        .iter()
+        .map(|r| (r.source.clone(), r.value.clone()))
+        .collect();
+    assert!(refs.contains(&(
+        Some("CVE".to_string()),
+        Some("CVE-1234-5678".to_string()),
+    )));
+    assert!(refs.contains(&(
+        Some("CVE".to_string()),
+        Some("CVE-1111-2222".to_string()),
+    )));
+}
+
+#[test]
+fn parses_plugin_metadata_fields() {
+    let path = fs::canonicalize("tests/fixtures/plugin_metadata.nessus").unwrap();
+    let report = parse_file(&path).unwrap();
+
+    let item = report.items.first().unwrap();
+    assert_eq!(item.description.as_deref(), Some("desc"));
+    assert_eq!(item.solution.as_deref(), Some("sol"));
+    assert_eq!(item.risk_factor.as_deref(), Some("Medium"));
+
+    let plugin = report
+        .plugins
+        .iter()
+        .find(|p| p.plugin_id == Some(1))
+        .unwrap();
+    assert_eq!(plugin.description.as_deref(), Some("desc"));
+    assert_eq!(plugin.solution.as_deref(), Some("sol"));
+    assert_eq!(plugin.risk_factor.as_deref(), Some("Medium"));
+}
+
+#[test]
+fn parses_policy_block() {
+    let path = fs::canonicalize("tests/fixtures/policy.nessus").unwrap();
+    let report = parse_file(&path).unwrap();
+
+    assert_eq!(report.policies.len(), 1);
+    let policy = &report.policies[0];
+    assert_eq!(policy.name.as_deref(), Some("basic"));
+    assert_eq!(policy.comments.as_deref(), Some("hello"));
+
+    assert_eq!(report.policy_plugins.len(), 1);
+    let plg = &report.policy_plugins[0];
+    assert_eq!(plg.plugin_id, Some(1));
+    assert_eq!(plg.plugin_name.as_deref(), Some("plug"));
+    assert_eq!(plg.family_name.as_deref(), Some("General"));
+    assert_eq!(plg.status.as_deref(), Some("enabled"));
+
+    assert_eq!(report.family_selections.len(), 1);
+    assert_eq!(
+        report.family_selections[0].family_name.as_deref(),
+        Some("General")
+    );
+
+    assert_eq!(report.plugin_preferences.len(), 1);
+    let pref = &report.plugin_preferences[0];
+    assert_eq!(pref.plugin_id, Some(1));
+    assert_eq!(pref.fullname.as_deref(), Some("Name"));
+    assert_eq!(pref.preference_name.as_deref(), Some("pref"));
+    assert_eq!(pref.preference_type.as_deref(), Some("type"));
+    assert_eq!(pref.selected_value.as_deref(), Some("value"));
+
+    assert_eq!(report.server_preferences.len(), 1);
+    let sp = &report.server_preferences[0];
+    assert_eq!(sp.name.as_deref(), Some("somepref"));
+    assert_eq!(sp.value.as_deref(), Some("val"));
 }

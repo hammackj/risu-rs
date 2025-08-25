@@ -1,0 +1,10 @@
+<NessusClientData_v2>
+  <ReportHost name="h">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="1" severity="1" pluginName="plug">
+      <description>desc</description>
+      <solution>sol</solution>
+      <risk_factor>Medium</risk_factor>
+    </ReportItem>
+  </ReportHost>
+</NessusClientData_v2>

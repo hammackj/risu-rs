@@ -194,6 +194,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    nessus_references (id) {
+        id -> Integer,
+        plugin_id -> Nullable<Integer>,
+        item_id -> Nullable<Integer>,
+        source -> Nullable<Text>,
+        value -> Nullable<Text>,
+        user_id -> Nullable<Integer>,
+        engagement_id -> Nullable<Integer>,
+    }
+}
+
+diesel::table! {
     nessus_patches (id) {
         id -> Integer,
         host_id -> Nullable<Integer>,
@@ -212,6 +224,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     nessus_plugins,
     nessus_service_descriptions,
     nessus_plugin_metadata,
+    nessus_references,
     nessus_patches,
     nessus_policies,
     nessus_policy_plugins,

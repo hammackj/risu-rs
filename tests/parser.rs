@@ -3,9 +3,9 @@ use std::io::{Result as IoResult, Write};
 use std::sync::{Arc, Mutex};
 
 use risu_rs::parser::parse_file;
+use tempfile::tempdir;
 use tracing::Level;
 use tracing_subscriber::fmt;
-use tempfile::tempdir;
 
 struct VecWriter(Arc<Mutex<Vec<u8>>>);
 
@@ -100,14 +100,8 @@ fn parses_attachments_and_references() {
         .iter()
         .map(|r| (r.source.clone(), r.value.clone()))
         .collect();
-    assert!(refs.contains(&(
-        Some("CVE".to_string()),
-        Some("CVE-1234-5678".to_string()),
-    )));
-    assert!(refs.contains(&(
-        Some("CVE".to_string()),
-        Some("CVE-1111-2222".to_string()),
-    )));
+    assert!(refs.contains(&(Some("CVE".to_string()), Some("CVE-1234-5678".to_string()),)));
+    assert!(refs.contains(&(Some("CVE".to_string()), Some("CVE-1111-2222".to_string()),)));
 }
 
 #[test]
@@ -128,6 +122,17 @@ fn parses_plugin_metadata_fields() {
     assert_eq!(plugin.description.as_deref(), Some("desc"));
     assert_eq!(plugin.solution.as_deref(), Some("sol"));
     assert_eq!(plugin.risk_factor.as_deref(), Some("Medium"));
+}
+
+#[test]
+fn maps_pluginid_zero_to_one() {
+    let path = fs::canonicalize("tests/fixtures/plugin_id0.nessus").unwrap();
+    let report = parse_file(&path).unwrap();
+
+    let item = report.items.first().unwrap();
+    assert_eq!(item.plugin_id, Some(1));
+
+    assert!(report.plugins.iter().any(|p| p.plugin_id == Some(1)));
 }
 
 #[test]

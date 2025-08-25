@@ -108,3 +108,21 @@ fn downgrade_plugins_adjusts_severity() {
     assert_eq!(report.items[0].severity, Some(0));
     assert_eq!(report.items[1].severity, Some(2));
 }
+#[test]
+fn adobe_air_rollup_creates_summary_item() {
+    let mut item = Item::default();
+    item.plugin_id = Some(56959);
+    item.severity = Some(2);
+    let mut report = NessusReport {
+        items: vec![item],
+        ..NessusReport::default()
+    };
+    postprocess::process(&mut report);
+    // original item downgraded
+    let orig = report.items.iter().find(|i| i.plugin_id == Some(56959)).unwrap();
+    assert_eq!(orig.severity, Some(-1));
+    assert_eq!(orig.real_severity, Some(2));
+    // rollup plugin and item inserted
+    assert!(report.plugins.iter().any(|p| p.plugin_id == Some(-99994)));
+    assert!(report.items.iter().any(|i| i.plugin_id == Some(-99994) && i.severity == Some(2)));
+}

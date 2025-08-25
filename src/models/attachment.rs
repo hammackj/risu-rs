@@ -10,6 +10,8 @@ pub struct Attachment {
     pub content_type: Option<String>,
     pub path: Option<String>,
     pub size: Option<i32>,
+    pub ahash: Option<String>,
+    pub value: Option<String>,
 }
 
 impl Default for Attachment {
@@ -20,6 +22,8 @@ impl Default for Attachment {
             content_type: None,
             path: None,
             size: None,
+            ahash: None,
+            value: None,
         }
     }
 }

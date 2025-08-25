@@ -19,6 +19,7 @@ use base64::{Engine, engine::general_purpose};
 use chrono::NaiveDateTime;
 use lazy_static::lazy_static;
 use regex::Regex;
+use sha2::{Digest, Sha256};
 
 /// XML element names that map directly to reference sources.
 const VALID_REFERENCE_ELEMENTS: &[&str] = &[
@@ -681,6 +682,9 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         let bytes = general_purpose::STANDARD
                             .decode(att.data.as_bytes())
                             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                        let mut hasher = Sha256::new();
+                        hasher.update(&bytes);
+                        let hash = format!("{:x}", hasher.finalize());
                         let file_path = base_dir.join(&att.name);
                         fs::write(&file_path, &bytes)?;
                         let mut attachment = Attachment::default();
@@ -688,6 +692,8 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         attachment.content_type = att.content_type;
                         attachment.path = Some(file_path.to_string_lossy().to_string());
                         attachment.size = Some(bytes.len() as i32);
+                        attachment.ahash = Some(hash);
+                        attachment.value = Some(att.data);
                         let id = report.attachments.len() as i32;
                         report.attachments.push(attachment);
                         if let Some(item) = report.items.last_mut() {
@@ -952,6 +958,11 @@ mod tests {
         let report = parse_file(&file_path).expect("parse");
         assert_eq!(report.attachments.len(), 1);
         assert_eq!(report.attachments[0].name.as_deref(), Some("a.txt"));
+        assert_eq!(
+            report.attachments[0].ahash.as_deref(),
+            Some("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
+        );
+        assert_eq!(report.attachments[0].value.as_deref(), Some("aGVsbG8="));
         assert_eq!(report.items.len(), 1);
         assert_eq!(report.items[0].attachment_id, Some(0));
         let saved = dir.path().join("a.txt");

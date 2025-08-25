@@ -185,6 +185,8 @@ diesel::table! {
         content_type -> Nullable<Text>,
         path -> Nullable<Text>,
         size -> Nullable<Integer>,
+        ahash -> Nullable<Text>,
+        value -> Nullable<Text>,
     }
 }
 

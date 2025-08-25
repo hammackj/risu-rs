@@ -10,7 +10,7 @@ fn create_config_and_parse() {
     // create config
     Command::cargo_bin("risu-rs")
         .unwrap()
-        .args(["--no-banner", "create-config"])
+        .args(["--no-banner", "--create-config-file"])
         .current_dir(&tmp)
         .assert()
         .success();
@@ -23,6 +23,8 @@ fn create_config_and_parse() {
         .current_dir(&tmp)
         .args([
             "--no-banner",
+            "--config-file",
+            "config.yml",
             "parse",
             sample.to_str().unwrap(),
             "-o",
@@ -43,7 +45,7 @@ fn parse_with_nil_renderer_creates_no_file() {
     // create config
     Command::cargo_bin("risu-rs")
         .unwrap()
-        .args(["--no-banner", "create-config"])
+        .args(["--no-banner", "--create-config-file"])
         .current_dir(&tmp)
         .assert()
         .success();
@@ -56,6 +58,8 @@ fn parse_with_nil_renderer_creates_no_file() {
         .current_dir(&tmp)
         .args([
             "--no-banner",
+            "--config-file",
+            "config.yml",
             "parse",
             sample.to_str().unwrap(),
             "-o",
@@ -100,7 +104,7 @@ fn template_arg_overrides_title() {
     // create config
     Command::cargo_bin("risu-rs")
         .unwrap()
-        .args(["--no-banner", "create-config"])
+        .args(["--no-banner", "--create-config-file"])
         .current_dir(&tmp)
         .assert()
         .success();
@@ -111,6 +115,8 @@ fn template_arg_overrides_title() {
         .current_dir(&tmp)
         .args([
             "--no-banner",
+            "--config-file",
+            "config.yml",
             "parse",
             sample.to_str().unwrap(),
             "-o",

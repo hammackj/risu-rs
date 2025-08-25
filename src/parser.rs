@@ -7,15 +7,15 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 use tracing::{debug, info};
 
 use crate::models::{
     Attachment, FamilySelection, Host, HostProperty, Item, Patch, Plugin, PluginPreference, Policy,
     PolicyPlugin, Reference, ServerPreference, ServiceDescription,
 };
-use base64::{engine::general_purpose, Engine};
+use base64::{Engine, engine::general_purpose};
 use chrono::NaiveDateTime;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -197,8 +197,9 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     for a in e.attributes().flatten() {
                         match a.key.as_ref() {
                             b"pluginID" => {
-                                item.plugin_id =
-                                    a.unescape_value().ok().and_then(|v| v.parse().ok());
+                                item.plugin_id = a.unescape_value().ok().and_then(|v| {
+                                    v.parse::<i32>().ok().map(|id| if id == 0 { 1 } else { id })
+                                });
                             }
                             b"port" => {
                                 item.port = a.unescape_value().ok().and_then(|v| v.parse().ok());
@@ -916,16 +917,20 @@ mod tests {
         assert_eq!(report.patches[0].name.as_deref(), Some("MS12-001"));
         assert_eq!(report.patches[0].value.as_deref(), Some("KB123456"));
         assert_eq!(report.host_properties.len(), 13);
-        assert!(report
-            .host_properties
-            .iter()
-            .any(|p| p.name.as_deref() == Some("host-ip")
-                && p.value.as_deref() == Some("192.168.0.1")));
-        assert!(report
-            .host_properties
-            .iter()
-            .any(|p| p.name.as_deref() == Some("operating-system")
-                && p.value.as_deref() == Some("Linux")));
+        assert!(
+            report
+                .host_properties
+                .iter()
+                .any(|p| p.name.as_deref() == Some("host-ip")
+                    && p.value.as_deref() == Some("192.168.0.1"))
+        );
+        assert!(
+            report
+                .host_properties
+                .iter()
+                .any(|p| p.name.as_deref() == Some("operating-system")
+                    && p.value.as_deref() == Some("Linux"))
+        );
         assert!(report.host_properties.iter().any(
             |p| p.name.as_deref() == Some("MS12-001") && p.value.as_deref() == Some("KB123456")
         ));
@@ -998,24 +1003,32 @@ mod tests {
         std::fs::write(&file_path, xml).unwrap();
         let report = parse_file(&file_path).expect("parse");
         assert_eq!(report.references.len(), 4);
-        assert!(report
-            .references
-            .iter()
-            .any(|r| r.source.as_deref() == Some("CVE")
-                && r.value.as_deref() == Some("CVE-2023-1111")));
-        assert!(report
-            .references
-            .iter()
-            .any(|r| r.source.as_deref() == Some("BID") && r.value.as_deref() == Some("BID-7654")));
-        assert!(report
-            .references
-            .iter()
-            .any(|r| r.source.as_deref() == Some("CVE")
-                && r.value.as_deref() == Some("CVE-2023-2222")));
-        assert!(report
-            .references
-            .iter()
-            .any(|r| r.source.as_deref() == Some("OSVDB") && r.value.as_deref() == Some("12345")));
+        assert!(
+            report
+                .references
+                .iter()
+                .any(|r| r.source.as_deref() == Some("CVE")
+                    && r.value.as_deref() == Some("CVE-2023-1111"))
+        );
+        assert!(
+            report
+                .references
+                .iter()
+                .any(|r| r.source.as_deref() == Some("BID")
+                    && r.value.as_deref() == Some("BID-7654"))
+        );
+        assert!(
+            report
+                .references
+                .iter()
+                .any(|r| r.source.as_deref() == Some("CVE")
+                    && r.value.as_deref() == Some("CVE-2023-2222"))
+        );
+        assert!(
+            report.references.iter().any(
+                |r| r.source.as_deref() == Some("OSVDB") && r.value.as_deref() == Some("12345")
+            )
+        );
     }
 
     #[test]

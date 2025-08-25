@@ -3,7 +3,7 @@ use std::error::Error;
 
 use crate::parser::NessusReport;
 use crate::renderer::Renderer;
-use crate::template::Template;
+use crate::template::{Template, malware_template_helper, scan_helper};
 
 /// Placeholder implementation for the exec_summary template.
 pub struct ExecSummaryTemplate;
@@ -24,7 +24,8 @@ impl Template for ExecSummaryTemplate {
             .map(String::as_str)
             .unwrap_or("Exec Summary");
         renderer.text(title)?;
-        renderer.text(&format!("Hosts: {}", report.hosts.len()))?;
+        renderer.text(&scan_helper::summary(report))?;
+        renderer.text(&malware_template_helper::conficker_section(&[]))?;
         Ok(())
     }
 }

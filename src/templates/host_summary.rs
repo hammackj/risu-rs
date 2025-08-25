@@ -3,7 +3,7 @@ use std::error::Error;
 
 use crate::parser::NessusReport;
 use crate::renderer::Renderer;
-use crate::template::Template;
+use crate::template::{Template, host_template_helper, shares_template_helper};
 
 /// Rough port of the Host Summary report from the Ruby implementation.
 pub struct HostSummaryTemplate;
@@ -26,8 +26,9 @@ impl Template for HostSummaryTemplate {
         renderer.text(title)?;
         renderer.text(&format!("Total Hosts: {}", report.hosts.len()))?;
         for host in &report.hosts {
-            let name = host.name.as_deref().unwrap_or("unknown");
-            renderer.text(&format!("Host: {name}"))?;
+            renderer.text(&host_template_helper::host_heading(host))?;
+            renderer.text(&host_template_helper::host_label(host))?;
+            renderer.text(&shares_template_helper::share_enumeration(&[]))?;
         }
         Ok(())
     }

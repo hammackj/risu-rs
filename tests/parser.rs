@@ -72,6 +72,8 @@ fn parses_traceroute_pcidss_and_logs_unknown() {
     assert!(props.iter().any(|(n, _)| n == "pcidss:status"));
 
     let logs = String::from_utf8(buf.lock().unwrap().clone()).unwrap();
-    assert!(logs.contains("Unknown XML tags encountered"));
+    assert!(logs.contains("Unknown XML elements encountered"));
+    assert!(logs.contains("Unknown host properties encountered"));
+    assert!(logs.contains("unknown-tag"));
     assert!(logs.contains("unknown-prop"));
 }

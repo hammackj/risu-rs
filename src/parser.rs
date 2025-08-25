@@ -120,9 +120,10 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
 
     let mut current_reference: Option<PendingReference> = None;
 
-    // Track XML elements or attributes we don't explicitly handle so developers
-    // can spot schema changes.
-    let mut unknown_tags = BTreeSet::new();
+    // Track XML elements, host-property names, or attributes we don't explicitly
+    // handle so developers can spot schema changes.
+    let mut unknown_elements = BTreeSet::new();
+    let mut unknown_host_props = BTreeSet::new();
     let mut unknown_attrs = BTreeSet::new();
 
     loop {
@@ -182,7 +183,7 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                                 && !TRACEROUTE_HOP_RE.is_match(&name)
                                 && !PCIDSS_RE.is_match(&name)
                             {
-                                unknown_tags.insert(name.clone());
+                                unknown_host_props.insert(name.clone());
                             }
                             current_tag = Some(name);
                         } else {
@@ -322,7 +323,8 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                         current_item_tag =
                             Some(String::from_utf8_lossy(e.name().as_ref()).to_string());
                     } else {
-                        unknown_tags.insert(String::from_utf8_lossy(e.name().as_ref()).to_string());
+                        unknown_elements
+                            .insert(String::from_utf8_lossy(e.name().as_ref()).to_string());
                     }
                 }
                 _ => {
@@ -334,10 +336,10 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                                 value: String::new(),
                             });
                         } else {
-                            unknown_tags.insert(name);
+                            unknown_elements.insert(name);
                         }
                     } else {
-                        unknown_tags.insert(name);
+                        unknown_elements.insert(name);
                     }
                 }
             },
@@ -747,8 +749,14 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
         buf.clear();
     }
 
-    if !unknown_tags.is_empty() {
-        debug!("Unknown XML tags encountered: {:?}", unknown_tags);
+    if !unknown_elements.is_empty() {
+        debug!("Unknown XML elements encountered: {:?}", unknown_elements);
+    }
+    if !unknown_host_props.is_empty() {
+        debug!(
+            "Unknown host properties encountered: {:?}",
+            unknown_host_props
+        );
     }
     if !unknown_attrs.is_empty() {
         debug!("Unknown XML attributes encountered: {:?}", unknown_attrs);

@@ -17,5 +17,6 @@
     </HostProperties>
     <ReportItem pluginID="100" port="0" svc_name="" protocol="tcp" severity="0" pluginName="Test Plugin">
     </ReportItem>
+    <unknown-tag></unknown-tag>
   </ReportHost>
 </NessusClientData_v2>

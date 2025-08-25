@@ -89,6 +89,7 @@ pub fn list() -> Vec<PostProcessInfo> {
     infos
 }
 
+mod downgrade_plugins;
 mod fix_ips;
 mod normalize_plugin_names;
 mod risk_score;

@@ -23,23 +23,30 @@ use renderers as renderer;
 mod schema;
 mod template;
 mod templates;
+mod version;
 
 use clap::{Parser, Subcommand};
 use std::collections::HashMap;
 use tracing::error;
 
 #[derive(Parser)]
-#[command(author, version, about)]
+#[command(author, version, about, disable_version_flag = true)]
 struct Cli {
     /// Suppress the startup banner
     #[arg(long = "no-banner")]
     _no_banner: bool,
+    /// Increase output verbosity for debugging
+    #[arg(long)]
+    debug: bool,
     /// Log level (error, warn, info, debug, trace)
     #[arg(long, default_value = "info")]
     log_level: String,
     /// Log output format (plain or json)
     #[arg(long, value_parser = ["plain", "json"], default_value = "plain")]
     log_format: String,
+    /// Print application, Rust, and crate versions
+    #[arg(long)]
+    version: bool,
     /// List available post-processing plugins
     #[arg(long = "list-post-process")]
     list_post_process: bool,
@@ -134,7 +141,17 @@ fn run() -> Result<(), error::Error> {
     }
     let cli = Cli::parse_from(args);
 
-    init_logging(&cli.log_level, &cli.log_format);
+    if cli.version {
+        version::print();
+        return Ok(());
+    }
+
+    let level = if cli.debug {
+        "debug"
+    } else {
+        cli.log_level.as_str()
+    };
+    init_logging(level, &cli.log_format);
 
     if cli.console {
         console::run()?;

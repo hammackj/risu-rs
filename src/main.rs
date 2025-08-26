@@ -26,6 +26,7 @@ mod template;
 mod templates;
 mod version;
 
+use chrono::{Duration, Utc};
 use clap::{Parser, Subcommand};
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
@@ -122,6 +123,9 @@ enum Commands {
         /// Report classification metadata
         #[arg(long = "report-classification")]
         report_classification: Option<String>,
+        /// Only include findings older than the specified number of days
+        #[arg(long = "older-than", value_name = "days")]
+        older_than: Option<i64>,
     },
     /// Index NASL plugins and store metadata
     PluginIndex {
@@ -284,6 +288,7 @@ fn run() -> Result<(), error::Error> {
         manager.register(Box::new(templates::NotableDetailedTemplate));
         manager.register(Box::new(templates::FindingStatisticsTemplate));
         manager.register(Box::new(templates::HostFindingsCsvTemplate));
+        manager.register(Box::new(templates::HostFindingsCsvOlderThanTemplate));
         manager.register(Box::new(templates::Top25Template));
         manager.register(Box::new(templates::FindingsHostTemplate));
         manager.register(Box::new(templates::FindingsSummaryTemplate));
@@ -308,6 +313,7 @@ fn run() -> Result<(), error::Error> {
             report_author,
             report_company,
             report_classification,
+            older_than,
         }) => {
             let blacklist: HashSet<i32> = cli.blacklist.iter().cloned().collect();
             let whitelist: HashSet<i32> = cli.whitelist.iter().cloned().collect();
@@ -355,6 +361,7 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::NotableDetailedTemplate));
             manager.register(Box::new(templates::FindingStatisticsTemplate));
             manager.register(Box::new(templates::HostFindingsCsvTemplate));
+            manager.register(Box::new(templates::HostFindingsCsvOlderThanTemplate));
             manager.register(Box::new(templates::Top25Template));
             manager.register(Box::new(templates::FindingsHostTemplate));
             manager.register(Box::new(templates::FindingsSummaryTemplate));
@@ -363,7 +370,14 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::MissingRootCausesTemplate));
             manager.register(Box::new(templates::MSWSUSFindingsTemplate));
             manager.load_templates().map_err(error::Error::Template)?;
-            let template_args: HashMap<String, String> = template_args.into_iter().collect();
+            let mut template_args: HashMap<String, String> = template_args.into_iter().collect();
+            if let Some(days) = older_than {
+                let cutoff = (Utc::now() - Duration::days(days)).naive_utc();
+                template_args.insert(
+                    "cutoff_date".to_string(),
+                    cutoff.format("%Y-%m-%d %H:%M:%S").to_string(),
+                );
+            }
             let mut conn = SqliteConnection::establish(&cfg.database_url)?;
             let mut templater =
                 template::templater::Templater::new(tmpl_name, &mut conn, output, manager);

@@ -8,7 +8,7 @@
 // `template_helper` and access everything under a common namespace.
 pub use super::graph_template_helper as graph;
 pub use super::host_template_helper as host;
-pub use super::malware_template_helper as malware;
+pub use super::malware_helper as malware;
 pub use super::scan_helper as scan;
 #[allow(unused_imports)]
 pub use super::scan_helper::{authenticated_count, scan_info_to_hash};

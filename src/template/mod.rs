@@ -14,7 +14,7 @@ pub mod create;
 pub mod graph_template_helper;
 pub mod helpers;
 pub mod host_template_helper;
-pub mod malware_template_helper;
+pub mod malware_helper;
 pub mod scan_helper;
 pub mod shares_template_helper;
 pub mod ssl_template_helper;

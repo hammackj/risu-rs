@@ -27,6 +27,16 @@ pub fn top_vuln_data_uri(
     helpers::embed_graph(&bytes)
 }
 
+/// Generate a malware infection graph and return a data URI embedding.
+pub fn malware_data_uri(
+    report: &NessusReport,
+    dir: &Path,
+) -> Result<String, Box<dyn Error>> {
+    let path = graphs::malware(report, dir)?;
+    let bytes = fs::read(path)?;
+    helpers::embed_graph(&bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,6 +117,8 @@ mod tests {
             items: vec![Item {
                 id: 1,
                 plugin_name: Some("vuln".into()),
+                plugin_id: Some(34221),
+                host_id: Some(0),
                 ..Default::default()
             }],
             plugins: Vec::new(),
@@ -132,6 +144,8 @@ mod tests {
         assert!(os_uri.starts_with("data:image/png;base64,"));
         let vuln_uri = top_vuln_data_uri(&r, dir.path(), 5).unwrap();
         assert!(vuln_uri.starts_with("data:image/png;base64,"));
+        let mal_uri = malware_data_uri(&r, dir.path()).unwrap();
+        assert!(mal_uri.starts_with("data:image/png;base64,"));
     }
 
     #[test]

@@ -245,6 +245,7 @@ fn run() -> Result<(), error::Error> {
         manager.register(Box::new(templates::PCIComplianceTemplate));
         manager.register(Box::new(templates::StigFindingsSummaryTemplate));
         manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
+        manager.register(Box::new(templates::SslSummaryTemplate));
         manager.register(Box::new(templates::AuthenticationSummaryTemplate));
         manager.register(Box::new(templates::CoverSheetTemplate));
         manager.register(Box::new(templates::ExecSummaryTemplate));
@@ -292,8 +293,9 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::HostSummaryTemplate));
             manager.register(Box::new(templates::MSPatchSummaryTemplate));
             manager.register(Box::new(templates::PCIComplianceTemplate));
-            manager.register(Box::new(templates::StigFindingsSummaryTemplate));
+        manager.register(Box::new(templates::StigFindingsSummaryTemplate));
             manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
+            manager.register(Box::new(templates::SslSummaryTemplate));
             manager.register(Box::new(templates::AuthenticationSummaryTemplate));
             manager.register(Box::new(templates::CoverSheetTemplate));
             manager.register(Box::new(templates::ExecSummaryTemplate));

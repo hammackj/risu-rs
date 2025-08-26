@@ -1,0 +1,11 @@
+<NessusClientData_v2 version="2.0">
+  <ReportHost name="192.168.0.1">
+    <HostProperties>
+      <tag name="host-ip">192.168.0.1</tag>
+    </HostProperties>
+    <ReportItem pluginID="2001" port="443" svc_name="https" protocol="tcp" severity="2" pluginName="SSL Weak Cipher">
+    </ReportItem>
+    <ReportItem pluginID="2002" port="443" svc_name="https" protocol="tcp" severity="1" pluginName="SSL Certificate Expired">
+    </ReportItem>
+  </ReportHost>
+</NessusClientData_v2>

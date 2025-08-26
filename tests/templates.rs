@@ -248,6 +248,44 @@ fn host_findings_csv_template_renders() {
 }
 
 #[test]
+fn host_findings_csv_older_than_template_renders() {
+    let tmp = tempdir().unwrap();
+    let sample = fs::canonicalize("tests/fixtures/notable_high.nessus").unwrap();
+
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .args(["--no-banner", "--create-config-file"])
+        .current_dir(&tmp)
+        .assert()
+        .success();
+
+    let output = tmp.path().join("out.csv");
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .current_dir(&tmp)
+        .args([
+            "--no-banner",
+            "--config-file",
+            "config.yml",
+            "parse",
+            sample.to_str().unwrap(),
+            "-o",
+            output.to_str().unwrap(),
+            "-t",
+            "host_findings_csv_older_than",
+            "--renderer",
+            "csv",
+            "--older-than",
+            "0",
+        ])
+        .assert()
+        .success();
+
+    let contents = fs::read_to_string(output).unwrap();
+    assert!(contents.contains("Critical Plugin"));
+}
+
+#[test]
 fn assets_template_renders_host_details() {
     let contents = render_template_capture("assets");
     assert!(contents.contains("Name: 192.168.0.1"));

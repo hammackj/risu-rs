@@ -10,9 +10,13 @@ pub use super::graph_template_helper as graph;
 pub use super::host_template_helper as host;
 pub use super::malware_template_helper as malware;
 pub use super::scan_helper as scan;
-pub use super::shares_template_helper as shares;
 #[allow(unused_imports)]
 pub use super::scan_helper::{authenticated_count, scan_info_to_hash};
+pub use super::shares_template_helper as shares;
+
+use chrono::NaiveDateTime;
+
+use crate::{models::Item, parser::NessusReport};
 
 /// Format text as a Markdown heading at the given level.
 ///
@@ -63,6 +67,21 @@ pub fn field(name: &str, value: &str) -> String {
 pub fn classification_banner(text: &str) -> String {
     let line = format!("*** {text} ***");
     format!("{line}\n{line}")
+}
+
+/// Return `Item` references whose associated host scan end time is earlier
+/// than the provided cutoff. Items lacking an end time are included.
+pub fn items_older_than<'a>(report: &'a NessusReport, cutoff: NaiveDateTime) -> Vec<&'a Item> {
+    report
+        .items
+        .iter()
+        .filter(|item| {
+            item.host_id
+                .and_then(|hid| report.hosts.get(hid as usize))
+                .and_then(|h| h.end)
+                .map_or(true, |end| end < cutoff)
+        })
+        .collect()
 }
 
 #[cfg(test)]

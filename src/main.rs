@@ -240,6 +240,7 @@ fn run() -> Result<(), error::Error> {
         let mut manager = template::TemplateManager::new(paths);
         manager.register(Box::new(template::SimpleTemplate));
         manager.register(Box::new(templates::TemplateTemplate));
+        manager.register(Box::new(templates::AssetsTemplate));
         manager.register(Box::new(templates::HostSummaryTemplate));
         manager.register(Box::new(templates::MSPatchSummaryTemplate));
         manager.register(Box::new(templates::PCIComplianceTemplate));
@@ -293,6 +294,7 @@ fn run() -> Result<(), error::Error> {
             let mut manager = template::TemplateManager::new(paths);
             manager.register(Box::new(template::SimpleTemplate));
             manager.register(Box::new(templates::TemplateTemplate));
+            manager.register(Box::new(templates::AssetsTemplate));
             manager.register(Box::new(templates::HostSummaryTemplate));
             manager.register(Box::new(templates::MSPatchSummaryTemplate));
             manager.register(Box::new(templates::PCIComplianceTemplate));

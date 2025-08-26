@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 
+use crate::analysis::risk;
 use crate::parser::NessusReport;
 use crate::renderer::Renderer;
 use crate::template::{
@@ -48,10 +49,20 @@ impl Template for ExecSummaryTemplate {
             template_helper::field("Info", &severities[0].to_string()),
         ]
         .join("\n");
+        let network = risk::Network {
+            critical: severities[4],
+            high: severities[3],
+            medium: severities[2],
+            low: severities[1],
+        };
+        let risk_score = network.risk_score();
+        let risk_field = template_helper::field("Risk Score", &format!("{:.2}", risk_score));
         let severity_text = format!(
-            "{}\n{}",
+            "{}\n{}\n{}\n{}",
             template_helper::heading(2, "Severity Breakdown"),
-            severity_fields
+            severity_fields,
+            risk_field,
+            "Risk scores derived from weighted averages of finding severities (Critical=9, High=7, Medium=4, Low=1).",
         );
         renderer.text(&severity_text)?;
 

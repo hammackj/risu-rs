@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 
+use crate::analysis::risk;
 use crate::parser::NessusReport;
 use crate::renderer::Renderer;
 use crate::template::Template;
@@ -25,6 +26,26 @@ impl Template for ExecutiveSummaryDetailedTemplate {
             .unwrap_or("Executive Summary Detailed");
         renderer.text(title)?;
         renderer.text(&format!("Hosts: {}", report.hosts.len()))?;
+
+        let mut severities = [0u32; 5];
+        for item in &report.items {
+            if let Some(sev) = item.severity {
+                if (0..=4).contains(&sev) {
+                    severities[sev as usize] += 1;
+                }
+            }
+        }
+        let network = risk::Network {
+            critical: severities[4],
+            high: severities[3],
+            medium: severities[2],
+            low: severities[1],
+        };
+        let risk_score = network.risk_score();
+        renderer.text(&format!("Risk Score: {:.2}", risk_score))?;
+        renderer.text(
+            "Risk scores derived from weighted averages of finding severities (Critical=9, High=7, Medium=4, Low=1).",
+        )?;
         Ok(())
     }
 }

@@ -8,6 +8,7 @@ pub mod parser;
 pub mod postprocess;
 pub mod renderers;
 pub use renderers as renderer;
+pub mod analysis;
 pub mod schema;
 pub mod template;
 pub mod templates;

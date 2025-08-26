@@ -137,6 +137,47 @@ fn graphs_template_renders() {
 }
 
 #[test]
+fn graphs_template_creates_and_embeds_graphs() {
+    let work_dir = tempdir().unwrap();
+    let graph_dir = tempdir().unwrap();
+    let sample = fs::canonicalize("tests/fixtures/sample.nessus").unwrap();
+
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .args(["--no-banner", "--create-config-file"])
+        .current_dir(&work_dir)
+        .assert()
+        .success();
+
+    let output = work_dir.path().join("out.csv");
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .current_dir(&work_dir)
+        .env("TMPDIR", graph_dir.path())
+        .args([
+            "--no-banner",
+            "--config-file",
+            "config.yml",
+            "parse",
+            sample.to_str().unwrap(),
+            "-o",
+            output.to_str().unwrap(),
+            "-t",
+            "graphs",
+            "--renderer",
+            "csv",
+        ])
+        .assert()
+        .success();
+
+    assert!(graph_dir.path().join("os_distribution.png").exists());
+    assert!(graph_dir.path().join("top_vulnerabilities.png").exists());
+
+    let contents = fs::read_to_string(output).unwrap();
+    assert_eq!(contents.matches("data:image/png;base64").count(), 2);
+}
+
+#[test]
 fn pci_compliance_template_renders() {
     run_template("pci_compliance", "PCI / DSS Compliance Overview");
 }

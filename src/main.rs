@@ -53,7 +53,8 @@ struct Cli {
     /// List available post-processing plugins
     #[arg(long = "list-post-process")]
     list_post_process: bool,
-    /// List available templates
+    /// List available templates. Templates are searched in built-in
+    /// `src/templates`, the current working directory, and `$HOME/.risu/templates`.
     #[arg(long = "list-templates")]
     list_templates: bool,
     /// Comma-separated plugin IDs to blacklist
@@ -93,7 +94,8 @@ enum Commands {
     Parse {
         /// File to parse
         file: std::path::PathBuf,
-        /// Template to use for rendering
+        /// Template to use for rendering. Templates are searched in
+        /// `src/templates`, the current directory, and `$HOME/.risu/templates`.
         #[arg(short, long, default_value = "simple")]
         template: String,
         /// Output file for generated document

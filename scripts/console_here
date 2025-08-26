@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Start the risu-rs database console using configuration from the current directory.
+
+# Location of repository root relative to this script
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Directory where the script was invoked
+CALLER_DIR="$PWD"
+
+CONFIG_PATH="$CALLER_DIR/config.yml"
+if [ -f "$CONFIG_PATH" ]; then
+    CONFIG_ARG=(--config-file "$CONFIG_PATH")
+else
+    CONFIG_ARG=()
+fi
+
+cd "$REPO_ROOT"
+cargo run --quiet -- --console "${CONFIG_ARG[@]}"

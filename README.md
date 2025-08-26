@@ -65,3 +65,11 @@ Maintainers can use the provided Makefile to cut releases:
 - `make clean` – remove build artifacts.
 - `make test` – run tests against all supported database backends (`make test-sqlite`, `make test-postgres`, `make test-mysql` to run individually).
 - `make notify VERSION=x.y.z WEBHOOK=https://example.com/hook` – send a release announcement to a webhook (e.g. Slack).
+
+## Developer utilities
+
+- `scripts/generate_rollups.py` – regenerate rollup plugin definitions from the legacy Ruby project.
+- `scripts/console_here` – open an interactive database console using the `config.yml` in the current directory:
+   ```bash
+   ./scripts/console_here
+   ```

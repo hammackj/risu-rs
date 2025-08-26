@@ -39,7 +39,7 @@ or expose a `create_template` constructor in a dynamic library. The
 `TemplateManager` searches for dynamic libraries in the following locations,
 in order:
 
-1. A `templates/` directory next to the executable.
+1. The built-in `src/templates` directory shipped with the project.
 2. The current working directory.
 3. `$HOME/.risu/templates`.
 4. Any additional paths listed in the configuration `template_paths`.

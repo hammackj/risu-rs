@@ -68,6 +68,9 @@ struct Cli {
     /// Test database connection
     #[arg(long)]
     test_connection: bool,
+    /// Print the current database schema version
+    #[arg(long = "db-version")]
+    db_version: bool,
     /// Path to configuration file
     #[arg(long = "config-file", value_name = "path")]
     config_file: Option<std::path::PathBuf>,
@@ -181,6 +184,17 @@ fn run() -> Result<(), error::Error> {
         }
     }
 
+    let cfg = config::load_config(&config_path).unwrap_or_default();
+
+    if cli.db_version {
+        let mut conn = SqliteConnection::establish(&cfg.database_url)?;
+        match version::db_version(&mut conn)? {
+            Some(v) => println!("{v}"),
+            None => println!("unknown"),
+        }
+        return Ok(());
+    }
+
     if cli.create_tables || cli.drop_tables {
         migrate::run(cli.create_tables, cli.drop_tables)?;
         println!("Migration complete");
@@ -188,7 +202,6 @@ fn run() -> Result<(), error::Error> {
     }
 
     if cli.test_connection {
-        let cfg = config::load_config(&config_path).unwrap_or_default();
         match SqliteConnection::establish(&cfg.database_url) {
             Ok(_) => println!("Database connection successful"),
             Err(e) => {
@@ -197,6 +210,10 @@ fn run() -> Result<(), error::Error> {
             }
         }
         return Ok(());
+    }
+
+    if let Ok(mut conn) = SqliteConnection::establish(&cfg.database_url) {
+        version::warn_on_mismatch(&mut conn);
     }
 
     if cli.console {
@@ -210,7 +227,6 @@ fn run() -> Result<(), error::Error> {
     }
 
     if cli.list_templates {
-        let cfg = config::load_config(&config_path).unwrap_or_default();
         let paths = cfg
             .template_paths
             .iter()
@@ -257,7 +273,6 @@ fn run() -> Result<(), error::Error> {
                 postprocess::process(&mut report);
             }
 
-            let cfg = config::load_config(&config_path).unwrap_or_default();
             let paths = cfg
                 .template_paths
                 .iter()

@@ -14,6 +14,16 @@ pub fn run(create_tables: bool, drop_tables: bool) -> Result<(), crate::error::E
     if create_tables {
         conn.run_pending_migrations(MIGRATIONS)
             .map_err(crate::error::Error::Migration)?;
+
+        use crate::models::version::NewVersion;
+        use crate::schema::versions::dsl::versions as versions_table;
+        use diesel::dsl::insert_into;
+        let new_ver = NewVersion {
+            version: env!("CARGO_PKG_VERSION"),
+        };
+        let _ = insert_into(versions_table)
+            .values(&new_ver)
+            .execute(&mut conn);
     }
 
     if drop_tables {

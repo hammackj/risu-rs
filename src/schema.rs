@@ -1,4 +1,11 @@
 diesel::table! {
+    versions (id) {
+        id -> Integer,
+        version -> Text,
+    }
+}
+
+diesel::table! {
     nessus_hosts (id) {
         id -> Integer,
         nessus_report_id -> Nullable<Integer>,
@@ -224,6 +231,7 @@ diesel::table! {
 }
 
 diesel::allow_tables_to_appear_in_same_query!(
+    versions,
     nessus_hosts,
     nessus_host_properties,
     nessus_items,

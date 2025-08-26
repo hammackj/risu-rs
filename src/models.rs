@@ -15,6 +15,7 @@ pub mod policy_plugin;
 pub mod reference;
 pub mod server_preference;
 pub mod service_description;
+pub mod version;
 
 pub use attachment::Attachment;
 pub use family_selection::FamilySelection;

@@ -257,3 +257,36 @@ fn assets_template_renders_host_details() {
     assert!(contents.contains("MAC: 00:11:22:33:44:55"));
     assert!(contents.contains("OS: Linux"));
 }
+
+#[test]
+fn findings_host_template_renders() {
+    run_template("findings_host", "Findings Summary by Host Report");
+}
+
+#[test]
+fn findings_summary_template_renders() {
+    run_template("findings_summary", "Findings Summary Report");
+}
+
+#[test]
+fn findings_summary_with_pluginid_template_renders() {
+    run_template("findings_summary_with_pluginid", "Findings Summary Report");
+}
+
+#[test]
+fn malicious_process_detection_template_renders() {
+    run_template(
+        "malicious_process_detection",
+        "Malicious Process Detection Findings",
+    );
+}
+
+#[test]
+fn missing_root_causes_template_renders() {
+    run_template("missing_root_causes", "Missing Root Causes Report");
+}
+
+#[test]
+fn ms_wsus_findings_template_renders() {
+    run_template("ms_wsus_findings", "Patch Management: WSUS Report");
+}

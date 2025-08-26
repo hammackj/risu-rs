@@ -110,6 +110,18 @@ enum Commands {
         /// Template-specific arguments as `key=value` pairs
         #[arg(long = "template-arg", value_name = "key=value", value_parser = parse_key_val::<String, String>)]
         template_args: Vec<(String, String)>,
+        /// Report title metadata
+        #[arg(long = "report-title")]
+        report_title: Option<String>,
+        /// Report author metadata
+        #[arg(long = "report-author")]
+        report_author: Option<String>,
+        /// Report company metadata
+        #[arg(long = "report-company")]
+        report_company: Option<String>,
+        /// Report classification metadata
+        #[arg(long = "report-classification")]
+        report_classification: Option<String>,
     },
     /// Index NASL plugins and store metadata
     PluginIndex {
@@ -279,6 +291,10 @@ fn run() -> Result<(), error::Error> {
             post_process,
             renderer: renderer_opt,
             template_args,
+            report_title,
+            report_author,
+            report_company,
+            report_classification,
         }) => {
             let blacklist: HashSet<i32> = cli.blacklist.iter().cloned().collect();
             let whitelist: HashSet<i32> = cli.whitelist.iter().cloned().collect();
@@ -287,6 +303,13 @@ fn run() -> Result<(), error::Error> {
             if post_process {
                 postprocess::process(&mut report, &whitelist, &blacklist);
             }
+
+            // Populate report metadata from CLI or configuration
+            report.report.title = report_title.or(cfg.report_title.clone());
+            report.report.author = report_author.or(cfg.report_author.clone());
+            report.report.company = report_company.or(cfg.report_company.clone());
+            report.report.classification =
+                report_classification.or(cfg.report_classification.clone());
 
             let paths = cfg
                 .template_paths

@@ -56,10 +56,11 @@ pub fn authentication_section(report: &NessusReport) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Host, Item};
+    use crate::models::{Host, Item, Report};
 
     fn sample_report() -> NessusReport {
         NessusReport {
+            report: Report::default(),
             version: "1".into(),
             hosts: vec![Host {
                 id: 1,

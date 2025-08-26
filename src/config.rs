@@ -27,6 +27,18 @@ pub struct Config {
     /// Paths to search for compiled template modules.
     #[serde(default = "default_template_paths")]
     pub template_paths: Vec<String>,
+    /// Report title metadata
+    #[serde(default)]
+    pub report_title: Option<String>,
+    /// Report author metadata
+    #[serde(default)]
+    pub report_author: Option<String>,
+    /// Report company metadata
+    #[serde(default)]
+    pub report_company: Option<String>,
+    /// Report classification metadata
+    #[serde(default)]
+    pub report_classification: Option<String>,
 }
 
 impl Default for Config {
@@ -36,6 +48,10 @@ impl Default for Config {
             log_level: default_log_level(),
             log_format: default_log_format(),
             template_paths: default_template_paths(),
+            report_title: None,
+            report_author: None,
+            report_company: None,
+            report_classification: None,
         }
     }
 }

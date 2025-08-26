@@ -13,7 +13,7 @@ use tracing::{debug, info};
 
 use crate::models::{
     Attachment, FamilySelection, Host, HostProperty, Item, Patch, Plugin, PluginPreference, Policy,
-    PolicyPlugin, Reference, ServerPreference, ServiceDescription,
+    PolicyPlugin, Reference, Report, ServerPreference, ServiceDescription,
 };
 use base64::{Engine, engine::general_purpose};
 use chrono::NaiveDateTime;
@@ -23,11 +23,39 @@ use sha2::{Digest, Sha256};
 
 /// XML element names that map directly to reference sources.
 const VALID_REFERENCE_ELEMENTS: &[&str] = &[
-    "cpe", "bid", "see_also", "xref", "cve", "iava", "msft", "osvdb",
-    "cert", "edb-id", "rhsa", "secunia", "suse", "dsa", "owasp", "cwe",
-    "iavb", "iavt", "cisco-sa", "ics-alert", "cisco-bug-id", "cisco-sr",
-    "cert-vu", "vmsa", "apple-sa", "icsa", "cert-cc", "msvr", "usn",
-    "hp", "glsa", "freebsd", "tra",
+    "cpe",
+    "bid",
+    "see_also",
+    "xref",
+    "cve",
+    "iava",
+    "msft",
+    "osvdb",
+    "cert",
+    "edb-id",
+    "rhsa",
+    "secunia",
+    "suse",
+    "dsa",
+    "owasp",
+    "cwe",
+    "iavb",
+    "iavt",
+    "cisco-sa",
+    "ics-alert",
+    "cisco-bug-id",
+    "cisco-sr",
+    "cert-vu",
+    "vmsa",
+    "apple-sa",
+    "icsa",
+    "cert-cc",
+    "msvr",
+    "usn",
+    "hp",
+    "glsa",
+    "freebsd",
+    "tra",
 ];
 
 /// Host property names that are recognized and handled specially.
@@ -89,12 +117,9 @@ lazy_static! {
     static ref PATCH_RE: Regex = Regex::new("(?i)ms\\d{2}-\\d+").unwrap();
     static ref TRACEROUTE_HOP_RE: Regex = Regex::new(r"^traceroute_hop_\\d+$").unwrap();
     static ref PCIDSS_RE: Regex = Regex::new(r"^pcidss:.*$").unwrap();
-    static ref PATCH_SUMMARY_CVE_NUM_RE: Regex =
-        Regex::new(r"^patch-summary-cve-num$").unwrap();
-    static ref PATCH_SUMMARY_CVES_RE: Regex =
-        Regex::new(r"^patch-summary-cves$").unwrap();
-    static ref PATCH_SUMMARY_TXT_RE: Regex =
-        Regex::new(r"^patch-summary-txt$").unwrap();
+    static ref PATCH_SUMMARY_CVE_NUM_RE: Regex = Regex::new(r"^patch-summary-cve-num$").unwrap();
+    static ref PATCH_SUMMARY_CVES_RE: Regex = Regex::new(r"^patch-summary-cves$").unwrap();
+    static ref PATCH_SUMMARY_TXT_RE: Regex = Regex::new(r"^patch-summary-txt$").unwrap();
     static ref CPE_RE: Regex = Regex::new(r"^cpe-\d+$").unwrap();
     static ref KB_RE: Regex = Regex::new(r"^KB\d+$").unwrap();
 }
@@ -102,6 +127,7 @@ lazy_static! {
 /// Parsed representation of a Nessus report.
 #[derive(Default)]
 pub struct NessusReport {
+    pub report: Report,
     pub version: String,
     pub hosts: Vec<Host>,
     pub items: Vec<Item>,
@@ -116,6 +142,25 @@ pub struct NessusReport {
     pub family_selections: Vec<FamilySelection>,
     pub plugin_preferences: Vec<PluginPreference>,
     pub server_preferences: Vec<ServerPreference>,
+}
+
+impl std::ops::Deref for NessusReport {
+    type Target = Report;
+    fn deref(&self) -> &Self::Target {
+        &self.report
+    }
+}
+
+impl NessusReport {
+    /// Return the earliest scan start time across all hosts in the report.
+    pub fn scan_date(&self) -> Option<chrono::NaiveDateTime> {
+        self.report.scan_date(&self.hosts)
+    }
+
+    /// Static description of Nessus severity ratings.
+    pub fn scanner_nessus_ratings_text(&self) -> &'static str {
+        self.report.scanner_nessus_ratings_text()
+    }
 }
 
 /// Detect file type and parse accordingly.
@@ -165,9 +210,14 @@ pub fn filter_report(
     }
     report.items = new_items;
 
-    let used_attachments: HashSet<i32> =
-        report.items.iter().filter_map(|i| i.attachment_id).collect();
-    report.attachments.retain(|a| used_attachments.contains(&a.id));
+    let used_attachments: HashSet<i32> = report
+        .items
+        .iter()
+        .filter_map(|i| i.attachment_id)
+        .collect();
+    report
+        .attachments
+        .retain(|a| used_attachments.contains(&a.id));
 
     report.service_descriptions.retain_mut(|sd| {
         if let Some(old) = sd.item_id {
@@ -201,8 +251,11 @@ pub fn filter_report(
     });
 
     let allowed_pids: HashSet<i32> = report.items.iter().filter_map(|i| i.plugin_id).collect();
-    report.plugins.retain(|p| p.plugin_id.map_or(false, |pid| allowed_pids.contains(&pid)));
-    report.plugin_preferences
+    report
+        .plugins
+        .retain(|p| p.plugin_id.map_or(false, |pid| allowed_pids.contains(&pid)));
+    report
+        .plugin_preferences
         .retain(|p| p.plugin_id.map_or(true, |pid| allowed_pids.contains(&pid)));
     report
         .policy_plugins

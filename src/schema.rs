@@ -1,4 +1,16 @@
 diesel::table! {
+    nessus_reports (id) {
+        id -> Integer,
+        title -> Nullable<Text>,
+        author -> Nullable<Text>,
+        company -> Nullable<Text>,
+        classification -> Nullable<Text>,
+        user_id -> Nullable<Integer>,
+        engagement_id -> Nullable<Integer>,
+    }
+}
+
+diesel::table! {
     versions (id) {
         id -> Integer,
         version -> Text,
@@ -27,6 +39,7 @@ diesel::table! {
 diesel::table! {
     nessus_policies (id) {
         id -> Integer,
+        nessus_report_id -> Nullable<Integer>,
         name -> Nullable<Text>,
         comments -> Nullable<Text>,
     }
@@ -231,6 +244,7 @@ diesel::table! {
 }
 
 diesel::allow_tables_to_appear_in_same_query!(
+    nessus_reports,
     versions,
     nessus_hosts,
     nessus_host_properties,

@@ -13,6 +13,7 @@ pub mod plugin_preference;
 pub mod policy;
 pub mod policy_plugin;
 pub mod reference;
+pub mod report;
 pub mod server_preference;
 pub mod service_description;
 pub mod version;
@@ -26,6 +27,7 @@ pub use plugin_preference::PluginPreference;
 pub use policy::Policy;
 pub use policy_plugin::PolicyPlugin;
 pub use reference::Reference;
+pub use report::Report;
 pub use server_preference::ServerPreference;
 pub use service_description::ServiceDescription;
 
@@ -35,7 +37,8 @@ use std::net::IpAddr;
 
 use crate::schema::{nessus_hosts, nessus_patches, nessus_plugins};
 
-#[derive(Debug, Queryable, Identifiable)]
+#[derive(Debug, Queryable, Identifiable, Associations)]
+#[diesel(belongs_to(Report, foreign_key = nessus_report_id))]
 #[diesel(table_name = nessus_hosts)]
 pub struct Host {
     pub id: i32,

@@ -9,9 +9,11 @@ use windows_os::normalize_windows_os;
 
 pub mod top_vuln;
 pub mod windows_os;
+pub mod malware;
 
 pub use top_vuln::TopVulnGraph;
 pub use windows_os::WindowsOsGraph;
+pub use malware::malware;
 
 /// Generate a pie chart showing operating system distribution among hosts.
 /// Returns the path to the generated PNG file.

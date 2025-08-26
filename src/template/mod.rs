@@ -35,6 +35,21 @@ pub trait Template {
         renderer: &mut dyn Renderer,
         args: &HashMap<String, String>,
     ) -> Result<(), Box<dyn Error>>;
+
+    /// Determine if a plugin indicates default credentials.
+    fn has_default_credentials(&self, plugin_id: i32) -> bool {
+        crate::template::helpers::has_default_credentials(plugin_id)
+    }
+
+    /// Produce a warning section for default credential detections.
+    fn default_credentials_section(&self, plugin_ids: &[i32]) -> String {
+        crate::template::helpers::default_credentials_section(plugin_ids)
+    }
+
+    /// Produce an appendix section for default credential detections.
+    fn default_credentials_appendix_section(&self, plugin_ids: &[i32]) -> String {
+        crate::template::helpers::default_credentials_appendix_section(plugin_ids)
+    }
 }
 
 /// Manages discovery and loading of compiled template modules.

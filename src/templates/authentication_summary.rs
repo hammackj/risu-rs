@@ -3,9 +3,9 @@ use std::error::Error;
 
 use crate::parser::NessusReport;
 use crate::renderer::Renderer;
-use crate::template::Template;
+use crate::template::{template_helper, Template};
 
-/// Placeholder implementation for the authentication_summary template.
+/// Report summarizing counts of authenticated vs unauthenticated hosts.
 pub struct AuthenticationSummaryTemplate;
 
 impl Template for AuthenticationSummaryTemplate {
@@ -23,8 +23,16 @@ impl Template for AuthenticationSummaryTemplate {
             .get("title")
             .map(String::as_str)
             .unwrap_or("Authentication Summary");
-        renderer.text(title)?;
-        renderer.text(&format!("Hosts: {}", report.hosts.len()))?;
+        renderer.heading(1, title)?;
+
+        // Count hosts that were authenticated versus those that were not.
+        let (auth, unauth) = template_helper::authenticated_count(report);
+        let lines = [
+            template_helper::field("Authenticated hosts", &auth.to_string()),
+            template_helper::field("Unauthenticated hosts", &unauth.to_string()),
+        ]
+        .join("\n");
+        renderer.text(&lines)?;
         Ok(())
     }
 }

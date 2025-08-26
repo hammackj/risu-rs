@@ -31,11 +31,12 @@ pub fn top_vuln_data_uri(
 mod tests {
     use super::*;
     use crate::graphs::count_os;
-    use crate::models::{Host, Item};
+    use crate::models::{Host, Item, Report};
     use tempfile::tempdir;
 
     fn report() -> NessusReport {
         NessusReport {
+            report: Report::default(),
             version: "1".into(),
             hosts: vec![
                 Host {

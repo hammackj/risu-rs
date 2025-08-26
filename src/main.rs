@@ -259,6 +259,9 @@ fn run() -> Result<(), error::Error> {
         manager.register(Box::new(templates::TechnicalFindingsTemplate));
         manager.register(Box::new(templates::MSUpdateSummaryTemplate));
         manager.register(Box::new(templates::NotableTemplate));
+        manager.register(Box::new(templates::NotableDetailedTemplate));
+        manager.register(Box::new(templates::FindingStatisticsTemplate));
+        manager.register(Box::new(templates::HostFindingsCsvTemplate));
         manager.register(Box::new(templates::Top25Template));
         manager.load_templates().map_err(error::Error::Template)?;
         manager.display();
@@ -293,7 +296,7 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::HostSummaryTemplate));
             manager.register(Box::new(templates::MSPatchSummaryTemplate));
             manager.register(Box::new(templates::PCIComplianceTemplate));
-        manager.register(Box::new(templates::StigFindingsSummaryTemplate));
+            manager.register(Box::new(templates::StigFindingsSummaryTemplate));
             manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
             manager.register(Box::new(templates::SslSummaryTemplate));
             manager.register(Box::new(templates::AuthenticationSummaryTemplate));
@@ -309,6 +312,9 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::TechnicalFindingsTemplate));
             manager.register(Box::new(templates::MSUpdateSummaryTemplate));
             manager.register(Box::new(templates::NotableTemplate));
+            manager.register(Box::new(templates::NotableDetailedTemplate));
+            manager.register(Box::new(templates::FindingStatisticsTemplate));
+            manager.register(Box::new(templates::HostFindingsCsvTemplate));
             manager.register(Box::new(templates::Top25Template));
             manager.load_templates().map_err(error::Error::Template)?;
             let tmpl = manager.get(&tmpl_name).ok_or_else(|| {

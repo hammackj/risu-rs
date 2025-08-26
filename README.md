@@ -44,3 +44,14 @@ Paths are searched non-recursively and duplicates are ignored.
 Post-processing plugins allow adjusting a parsed report before rendering. They
 implement the [`PostProcess`](src/postprocess/mod.rs) trait and register using
 the `inventory` crate so they are executed in order after parsing.
+
+## Release workflow
+
+Maintainers can use the provided Makefile to cut releases:
+
+- `make build` – compile optimized binaries.
+- `make hash` – build and emit SHA256/SHA512 checksum files alongside binaries.
+- `make tag VERSION=x.y.z` – create an annotated git tag.
+- `make push VERSION=x.y.z` – push commits and tags to `origin`.
+- `make publish` – publish the crate to crates.io.
+- `make release VERSION=x.y.z [PUBLISH=1]` – run build, hashing, tagging and pushing; set `PUBLISH=1` to also publish the crate.

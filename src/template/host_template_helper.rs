@@ -7,11 +7,15 @@ pub fn host_heading(host: &Host) -> String {
     helpers::heading2(name)
 }
 
-/// Produce a label combining host name and IP address.
+/// Produce a label combining host name, IP address, and NetBIOS name if present.
 pub fn host_label(host: &Host) -> String {
     let name = host.name.as_deref().unwrap_or("unknown");
     let ip = host.ip.as_deref().unwrap_or("n/a");
-    format!("{name} ({ip})")
+    if let Some(nb) = host.netbios.as_deref() {
+        format!("{name} ({ip} / {nb})")
+    } else {
+        format!("{name} ({ip})")
+    }
 }
 
 #[cfg(test)]
@@ -42,5 +46,12 @@ mod tests {
         let h = sample_host();
         assert_eq!(host_heading(&h), "## srv");
         assert_eq!(host_label(&h), "srv (1.1.1.1)");
+    }
+
+    #[test]
+    fn label_includes_netbios() {
+        let mut h = sample_host();
+        h.netbios = Some("EXAMPLE".into());
+        assert_eq!(host_label(&h), "srv (1.1.1.1 / EXAMPLE)");
     }
 }

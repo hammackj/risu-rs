@@ -1,9 +1,22 @@
-import re, json, pathlib
+import os, re, json, pathlib
 
-ruby_dir = pathlib.Path('/risu-ruby/lib/risu/parsers/nessus/postprocess')
+# Allow overriding the location of the legacy Ruby repository via the
+# `RISU_RUBY_DIR` environment variable so the generation script can be run in
+# different environments.  This mirrors the directory layout used by the
+# original project.
+ruby_base = os.environ.get('RISU_RUBY_DIR', '/risu-ruby')
+ruby_dir = pathlib.Path(ruby_base) / 'lib/risu/parsers/nessus/postprocess'
 out_path = pathlib.Path('src/postprocess/rollups.rs')
 
-skip = {'post_process.rb', 'risk_score.rb', 'root_cause.rb'}
+# These plugins are implemented in Rust by hand and should not be auto
+# generated here.
+skip = {
+    'post_process.rb',
+    'risk_score.rb',
+    'root_cause.rb',
+    'downgrade_plugins.rb',
+    'normalize_plugin_names.rb',
+}
 files = sorted(f for f in ruby_dir.glob('*.rb') if f.name not in skip)
 
 with open(out_path, 'w') as out:

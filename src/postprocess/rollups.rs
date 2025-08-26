@@ -24,7 +24,6 @@ fn run_rollup(
                 }
                 item.real_severity = item.severity;
                 item.severity = Some(-1);
-                item.rollup_finding = Some(true);
             }
         }
     }
@@ -801,40 +800,13 @@ const PLUGIN_IDS_DELL_IDRAC: &[i32] = &[
     144756, 148956, 161800, 70411, 80442, 193888, 202259, 148955, 161799,
 ];
 
-struct DowngradePlugins;
-
-impl PostProcess for DowngradePlugins {
-    fn info(&self) -> PostProcessInfo {
-        PostProcessInfo {
-            name: "downgrade_plugins",
-            order: 1025,
-        }
-    }
-    fn run(&self, report: &mut NessusReport) {
-        run_rollup(
-            report,
-            0,
-            "",
-            "",
-            "Downgrades the Severity of Certain Plugins",
-            PLUGIN_IDS_DOWNGRADE_PLUGINS,
-        );
-    }
-}
-
-inventory::submit! {
-    PluginEntry { plugin: &DowngradePlugins }
-}
-
-const PLUGIN_IDS_DOWNGRADE_PLUGINS: &[i32] = &[];
-
 struct DropbearSsh;
 
 impl PostProcess for DropbearSsh {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "dropbear_ssh",
-            order: 1026,
+            order: 1025,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -861,7 +833,7 @@ impl PostProcess for Filezilla {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "filezilla",
-            order: 1027,
+            order: 1026,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -888,7 +860,7 @@ impl PostProcess for Firefox {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "firefox",
-            order: 1028,
+            order: 1027,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -932,7 +904,7 @@ impl PostProcess for Flexnet {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "flexnet",
-            order: 1029,
+            order: 1028,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -959,7 +931,7 @@ impl PostProcess for Foxit3d {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "foxit_3d",
-            order: 1030,
+            order: 1029,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -986,7 +958,7 @@ impl PostProcess for FoxitPhantomPdf {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "foxit_phantom_pdf",
-            order: 1031,
+            order: 1030,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1016,7 +988,7 @@ impl PostProcess for FoxitReader {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "foxit_reader",
-            order: 1032,
+            order: 1031,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1045,7 +1017,7 @@ impl PostProcess for GoogleChrome {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "google_chrome",
-            order: 1033,
+            order: 1032,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1096,7 +1068,7 @@ impl PostProcess for HpSystemMgtHomepage {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "hp_system_mgt_homepage",
-            order: 1034,
+            order: 1033,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1126,7 +1098,7 @@ impl PostProcess for Ilo {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "iLo",
-            order: 1035,
+            order: 1034,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1155,7 +1127,7 @@ impl PostProcess for IntelMgtEngine {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "intel_mgt_engine",
-            order: 1036,
+            order: 1035,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1182,7 +1154,7 @@ impl PostProcess for Irfanview {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "irfanview",
-            order: 1037,
+            order: 1036,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1209,7 +1181,7 @@ impl PostProcess for Java {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "java",
-            order: 1038,
+            order: 1037,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1245,7 +1217,7 @@ impl PostProcess for Jquqery {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "jquqery",
-            order: 1039,
+            order: 1038,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1272,7 +1244,7 @@ impl PostProcess for Libreoffice {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "libreoffice",
-            order: 1040,
+            order: 1039,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1302,7 +1274,7 @@ impl PostProcess for MicrosoftAzureDataStudio {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "microsoft_azure_data_studio",
-            order: 1041,
+            order: 1040,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1329,7 +1301,7 @@ impl PostProcess for MicrosoftDotNet {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "microsoft_dot_net",
-            order: 1042,
+            order: 1041,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1361,7 +1333,7 @@ impl PostProcess for MicrosoftEdge {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "microsoft_edge",
-            order: 1043,
+            order: 1042,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1392,7 +1364,7 @@ impl PostProcess for MicrosoftOffice {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "microsoft_office",
-            order: 1044,
+            order: 1043,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1439,7 +1411,7 @@ impl PostProcess for MicrosoftSqlServer {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "microsoft_sql_server",
-            order: 1045,
+            order: 1044,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1470,7 +1442,7 @@ impl PostProcess for MicrosoftVisualStudio {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "microsoft_visual_studio",
-            order: 1046,
+            order: 1045,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1497,7 +1469,7 @@ impl PostProcess for MicrosoftWindows {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "microsoft_windows",
-            order: 1047,
+            order: 1046,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1646,7 +1618,7 @@ impl PostProcess for MicrosoftWindows10 {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "microsoft_windows_10",
-            order: 1048,
+            order: 1047,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1679,7 +1651,7 @@ impl PostProcess for MicrosoftWindowsServer {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "microsoft_windows_server",
-            order: 1049,
+            order: 1048,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1714,7 +1686,7 @@ impl PostProcess for MongoDb {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "mongo_db",
-            order: 1050,
+            order: 1049,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1741,7 +1713,7 @@ impl PostProcess for MozzilaThunderbird {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "mozzila_thunderbird",
-            order: 1051,
+            order: 1050,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1768,7 +1740,7 @@ impl PostProcess for Mysql {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "mysql",
-            order: 1052,
+            order: 1051,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1797,7 +1769,7 @@ impl PostProcess for NextgenMirthConnect {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "nextgen_mirth_connect",
-            order: 1053,
+            order: 1052,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1824,7 +1796,7 @@ impl PostProcess for Nginx {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "nginx",
-            order: 1054,
+            order: 1053,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1845,40 +1817,13 @@ inventory::submit! {
 
 const PLUGIN_IDS_NGINX: &[i32] = &[134220];
 
-struct NormalizePluginNames;
-
-impl PostProcess for NormalizePluginNames {
-    fn info(&self) -> PostProcessInfo {
-        PostProcessInfo {
-            name: "normalize_plugin_names",
-            order: 1055,
-        }
-    }
-    fn run(&self, report: &mut NessusReport) {
-        run_rollup(
-            report,
-            0,
-            "",
-            "",
-            "Normalizes plugin names",
-            PLUGIN_IDS_NORMALIZE_PLUGIN_NAMES,
-        );
-    }
-}
-
-inventory::submit! {
-    PluginEntry { plugin: &NormalizePluginNames }
-}
-
-const PLUGIN_IDS_NORMALIZE_PLUGIN_NAMES: &[i32] = &[];
-
 struct NotepadPlusPlus;
 
 impl PostProcess for NotepadPlusPlus {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "notepad_plus_plus",
-            order: 1056,
+            order: 1054,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1905,7 +1850,7 @@ impl PostProcess for Openoffice {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "openoffice",
-            order: 1057,
+            order: 1055,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1934,7 +1879,7 @@ impl PostProcess for Openssh {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "openssh",
-            order: 1058,
+            order: 1056,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1966,7 +1911,7 @@ impl PostProcess for Openssl {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "openssl",
-            order: 1059,
+            order: 1057,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -1999,7 +1944,7 @@ impl PostProcess for OracleDatabase {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "oracle_database",
-            order: 1060,
+            order: 1058,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2030,7 +1975,7 @@ impl PostProcess for Php {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "php",
-            order: 1061,
+            order: 1059,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2068,7 +2013,7 @@ impl PostProcess for PostgresSql {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "postgres_sql",
-            order: 1062,
+            order: 1060,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2095,7 +2040,7 @@ impl PostProcess for Putty {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "putty",
-            order: 1063,
+            order: 1061,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2122,7 +2067,7 @@ impl PostProcess for RealPlayer {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "real_player",
-            order: 1064,
+            order: 1062,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2149,7 +2094,7 @@ impl PostProcess for Samba {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "samba",
-            order: 1065,
+            order: 1063,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2176,7 +2121,7 @@ impl PostProcess for Servu {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "servu",
-            order: 1066,
+            order: 1064,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2205,7 +2150,7 @@ impl PostProcess for SigplusPro {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "sigplus_pro",
-            order: 1067,
+            order: 1065,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2232,7 +2177,7 @@ impl PostProcess for Skype {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "skype",
-            order: 1068,
+            order: 1066,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2259,7 +2204,7 @@ impl PostProcess for SolarwindsDameware {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "solarwinds_dameware",
-            order: 1069,
+            order: 1067,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2286,7 +2231,7 @@ impl PostProcess for SybaseAsaClientConnectionBroadcast {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "sybase_asa_client_connection_broadcast",
-            order: 1070,
+            order: 1068,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2313,7 +2258,7 @@ impl PostProcess for SymantecEndpoint {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "symantec_endpoint",
-            order: 1071,
+            order: 1069,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2342,7 +2287,7 @@ impl PostProcess for SymantecPcanywhere {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "symantec_pcanywhere",
-            order: 1072,
+            order: 1070,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2369,7 +2314,7 @@ impl PostProcess for TenableNessus {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "tenable_nessus",
-            order: 1073,
+            order: 1071,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2396,7 +2341,7 @@ impl PostProcess for Timbuktu {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "timbuktu",
-            order: 1074,
+            order: 1072,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2423,7 +2368,7 @@ impl PostProcess for Ubuntu {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "ubuntu",
-            order: 1075,
+            order: 1073,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2453,7 +2398,7 @@ impl PostProcess for VeeamBackupAndReplication {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "veeam_backup_and_replication",
-            order: 1076,
+            order: 1074,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2480,7 +2425,7 @@ impl PostProcess for Vlc {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "vlc",
-            order: 1077,
+            order: 1075,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2510,7 +2455,7 @@ impl PostProcess for VmwareEsxi {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "vmware_esxi",
-            order: 1078,
+            order: 1076,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2544,7 +2489,7 @@ impl PostProcess for VmwarePlayer {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "vmware_player",
-            order: 1079,
+            order: 1077,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2571,7 +2516,7 @@ impl PostProcess for VmwareVcenter {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "vmware_vcenter",
-            order: 1080,
+            order: 1078,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2603,7 +2548,7 @@ impl PostProcess for VmwareVsphereClient {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "vmware_vsphere_client",
-            order: 1081,
+            order: 1079,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2630,7 +2575,7 @@ impl PostProcess for WindRiverVxworks {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "wind_river_vxworks",
-            order: 1082,
+            order: 1080,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2657,7 +2602,7 @@ impl PostProcess for Winscp {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "winscp",
-            order: 1083,
+            order: 1081,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2684,7 +2629,7 @@ impl PostProcess for Wireshark {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "wireshark",
-            order: 1084,
+            order: 1082,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2721,7 +2666,7 @@ impl PostProcess for ZoomClient {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "zoom_client",
-            order: 1085,
+            order: 1083,
         }
     }
     fn run(&self, report: &mut NessusReport) {
@@ -2754,7 +2699,7 @@ impl PostProcess for ZoomWorkplaceDesktopApp {
     fn info(&self) -> PostProcessInfo {
         PostProcessInfo {
             name: "zoom_workplace_desktop_app",
-            order: 1086,
+            order: 1084,
         }
     }
     fn run(&self, report: &mut NessusReport) {

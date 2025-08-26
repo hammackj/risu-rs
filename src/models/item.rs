@@ -1,4 +1,5 @@
 use diesel::prelude::*;
+use diesel::sqlite::SqliteConnection;
 
 use crate::schema::nessus_items;
 
@@ -75,5 +76,74 @@ impl Default for Item {
             engagement_id: None,
             rollup_finding: Some(false),
         }
+    }
+}
+
+impl Item {
+    pub fn search_plugin_output(
+        conn: &mut SqliteConnection,
+        keyword: &str,
+    ) -> QueryResult<Vec<Self>> {
+        use crate::schema::nessus_items::dsl::*;
+
+        let pattern = format!("%{}%", keyword);
+        nessus_items
+            .filter(plugin_output.is_not_null())
+            .filter(plugin_output.like(pattern))
+            .load::<Item>(conn)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::migrate::MIGRATIONS;
+    use crate::schema::nessus_items;
+    use diesel::sqlite::SqliteConnection;
+    use diesel_migrations::MigrationHarness;
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_items)]
+    struct NewItem<'a> {
+        host_id: Option<i32>,
+        plugin_id: Option<i32>,
+        plugin_output: Option<&'a str>,
+        plugin_name: Option<&'a str>,
+    }
+
+    fn setup() -> SqliteConnection {
+        let mut conn = SqliteConnection::establish(":memory:").unwrap();
+        conn.run_pending_migrations(MIGRATIONS).unwrap();
+        conn
+    }
+
+    #[test]
+    fn search_case_insensitive() {
+        let mut conn = setup();
+
+        let entries = vec![
+            NewItem {
+                host_id: None,
+                plugin_id: None,
+                plugin_output: Some("foo"),
+                plugin_name: Some("A"),
+            },
+            NewItem {
+                host_id: None,
+                plugin_id: None,
+                plugin_output: Some("FoO"),
+                plugin_name: Some("B"),
+            },
+        ];
+
+        diesel::insert_into(nessus_items::table)
+            .values(&entries)
+            .execute(&mut conn)
+            .unwrap();
+
+        let lower = Item::search_plugin_output(&mut conn, "foo").unwrap();
+        assert_eq!(lower.len(), 2);
+        let upper = Item::search_plugin_output(&mut conn, "FOO").unwrap();
+        assert_eq!(upper.len(), 2);
     }
 }

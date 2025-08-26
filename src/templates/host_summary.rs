@@ -3,7 +3,10 @@ use std::error::Error;
 
 use crate::parser::NessusReport;
 use crate::renderer::Renderer;
-use crate::template::{Template, host_template_helper, shares_template_helper};
+use crate::template::{
+    template_helper::{self, host, shares},
+    Template,
+};
 
 /// Rough port of the Host Summary report from the Ruby implementation.
 pub struct HostSummaryTemplate;
@@ -26,8 +29,8 @@ impl Template for HostSummaryTemplate {
         renderer.text(title)?;
         renderer.text(&format!("Total Hosts: {}", report.hosts.len()))?;
         for (idx, host) in report.hosts.iter().enumerate() {
-            renderer.text(&host_template_helper::host_heading(host))?;
-            renderer.text(&host_template_helper::host_label(host))?;
+            renderer.text(&host::host_heading(host))?;
+            renderer.text(&host::host_label(host))?;
 
             // Gather vulnerability counts for this host.
             let items: Vec<_> = report
@@ -46,10 +49,15 @@ impl Template for HostSummaryTemplate {
                     }
                 }
             }
-            renderer.text(&format!(
-                "Critical: {}\nHigh: {}\nMedium: {}\nLow: {}\nInfo: {}",
-                counts[4], counts[3], counts[2], counts[1], counts[0]
-            ))?;
+            let sev_fields = [
+                template_helper::field("Critical", &counts[4].to_string()),
+                template_helper::field("High", &counts[3].to_string()),
+                template_helper::field("Medium", &counts[2].to_string()),
+                template_helper::field("Low", &counts[1].to_string()),
+                template_helper::field("Info", &counts[0].to_string()),
+            ]
+            .join("\n");
+            renderer.text(&sev_fields)?;
 
             // Enumerate shares for this host from host properties with a `share-` prefix.
             let mut shares_vec: Vec<(String, String)> = report
@@ -73,7 +81,7 @@ impl Template for HostSummaryTemplate {
                 .iter()
                 .map(|(n, v)| (n.as_str(), v.as_str()))
                 .collect();
-            renderer.text(&shares_template_helper::share_enumeration(&shares))?;
+            renderer.text(&shares::share_enumeration(&shares))?;
         }
         Ok(())
     }

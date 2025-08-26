@@ -3,7 +3,7 @@ use std::error::Error;
 
 use crate::parser::NessusReport;
 use crate::renderer::Renderer;
-use crate::template::{Template, graph_template_helper};
+use crate::template::{template_helper::graph, Template};
 
 /// Placeholder implementation for the graphs template.
 pub struct GraphsTemplate;
@@ -22,11 +22,11 @@ impl Template for GraphsTemplate {
         let title = args.get("title").map(String::as_str).unwrap_or("Graphs");
         renderer.heading(1, title)?;
         let tmp = std::env::temp_dir();
-        if let Ok(uri) = graph_template_helper::os_distribution_data_uri(report, &tmp) {
+        if let Ok(uri) = graph::os_distribution_data_uri(report, &tmp) {
             renderer.heading(2, "OS distribution (Windows 2000/XP variants combined)")?;
             renderer.text(&uri)?;
         }
-        if let Ok(uri) = graph_template_helper::top_vuln_data_uri(report, &tmp, 5) {
+        if let Ok(uri) = graph::top_vuln_data_uri(report, &tmp, 5) {
             renderer.heading(2, "Top vulnerabilities")?;
             renderer.text(&uri)?;
         }

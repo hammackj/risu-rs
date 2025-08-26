@@ -4,8 +4,8 @@ use std::error::Error;
 use crate::parser::NessusReport;
 use crate::renderer::Renderer;
 use crate::template::{
-    template_helper::{self, malware, scan},
     Template,
+    template_helper::{self, malware, scan},
 };
 
 /// Implementation of the exec_summary template providing an overview similar to the Ruby version.
@@ -75,11 +75,15 @@ impl Template for ExecSummaryTemplate {
             .into_iter()
             .map(|(name, count)| format!("{name}: {count}"))
             .collect();
-        let host_section = format!(
-            "{}\n{}",
-            template_helper::heading(2, "Top Hosts"),
-            template_helper::bullet_list(&host_lines)
-        );
+        let host_section = if host_lines.is_empty() {
+            template_helper::heading(2, "Top Hosts")
+        } else {
+            format!(
+                "{}\n{}",
+                template_helper::heading(2, "Top Hosts"),
+                template_helper::bullet_list(&host_lines)
+            )
+        };
         renderer.text(&host_section)?;
 
         // Remediation summary – top plugins by count
@@ -98,11 +102,15 @@ impl Template for ExecSummaryTemplate {
             .into_iter()
             .map(|(name, count)| format!("{name}: {count}"))
             .collect();
-        let plugin_section = format!(
-            "{}\n{}",
-            template_helper::heading(2, "Remediation Summary"),
-            template_helper::bullet_list(&plugin_lines)
-        );
+        let plugin_section = if plugin_lines.is_empty() {
+            template_helper::heading(2, "Remediation Summary")
+        } else {
+            format!(
+                "{}\n{}",
+                template_helper::heading(2, "Remediation Summary"),
+                template_helper::bullet_list(&plugin_lines)
+            )
+        };
         renderer.text(&plugin_section)?;
 
         // Authentication status

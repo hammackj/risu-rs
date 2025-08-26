@@ -15,7 +15,7 @@ pub use super::shares_template_helper as shares;
 /// Format text as a Markdown heading at the given level.
 ///
 /// ```
-/// use risu::template::template_helper::heading;
+/// use risu_rs::template::template_helper::heading;
 /// assert_eq!(heading(2, "Section"), "## Section");
 /// ```
 pub fn heading(level: usize, text: &str) -> String {
@@ -25,7 +25,7 @@ pub fn heading(level: usize, text: &str) -> String {
 /// Render an iterator of items as a Markdown bullet list.
 ///
 /// ```
-/// use risu::template::template_helper::bullet_list;
+/// use risu_rs::template::template_helper::bullet_list;
 /// let out = bullet_list(["a", "b"]);
 /// assert_eq!(out, "- a\n- b");
 /// ```
@@ -44,7 +44,7 @@ where
 /// Format a simple name/value pair.
 ///
 /// ```
-/// use risu::template::template_helper::field;
+/// use risu_rs::template::template_helper::field;
 /// assert_eq!(field("Host", "server"), "Host: server");
 /// ```
 pub fn field(name: &str, value: &str) -> String {
@@ -54,7 +54,7 @@ pub fn field(name: &str, value: &str) -> String {
 /// Generate a simple classification banner appearing above and below text.
 ///
 /// ```
-/// use risu::template::template_helper::classification_banner;
+/// use risu_rs::template::template_helper::classification_banner;
 /// let out = classification_banner("UNCLASSIFIED");
 /// assert!(out.contains("UNCLASSIFIED"));
 /// ```

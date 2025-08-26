@@ -317,38 +317,13 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::HostFindingsCsvTemplate));
             manager.register(Box::new(templates::Top25Template));
             manager.load_templates().map_err(error::Error::Template)?;
-            let tmpl = manager.get(&tmpl_name).ok_or_else(|| {
-                error::Error::Config(format!(
-                    "unknown template '{tmpl_name}'. available: {:?}",
-                    manager.available()
-                ))
-            })?;
-            let renderer_choice = renderer_opt.clone();
             let template_args: HashMap<String, String> = template_args.into_iter().collect();
-            let title_arg = template_args
-                .get("title")
-                .cloned()
-                .unwrap_or_else(|| "Report".to_string());
-            let mut renderer: Box<dyn renderer::Renderer> = match renderer_choice.as_deref() {
-                Some("csv") => Box::new(renderer::CsvRenderer::new()),
-                Some("nil") => Box::new(renderer::NilRenderer::new()),
-                Some("pdf") => Box::new(renderer::PdfRenderer::new(&title_arg)),
-                None => match output.extension().and_then(|s| s.to_str()) {
-                    Some("csv") => Box::new(renderer::CsvRenderer::new()),
-                    _ => Box::new(renderer::PdfRenderer::new(&title_arg)),
-                },
-                _ => unreachable!(),
-            };
-            tmpl.generate(&report, renderer.as_mut(), &template_args)
+            let mut conn = SqliteConnection::establish(&cfg.database_url)?;
+            let mut templater =
+                template::templater::Templater::new(tmpl_name, &mut conn, output, manager);
+            templater
+                .generate(&report, renderer_opt.as_deref(), &template_args)
                 .map_err(error::Error::Template)?;
-            if renderer_choice.as_deref() != Some("nil") {
-                let mut f = std::fs::File::create(&output)?;
-                renderer.save(&mut f).map_err(error::Error::Template)?;
-            } else {
-                renderer
-                    .save(&mut std::io::sink())
-                    .map_err(error::Error::Template)?;
-            }
         }
         Some(Commands::PluginIndex { dir }) => {
             plugin_index::run(&dir)?;

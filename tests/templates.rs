@@ -187,6 +187,20 @@ fn graphs_template_creates_and_embeds_graphs() {
 }
 
 #[test]
+fn authentication_summary_reports_counts() {
+    let output = render_template_capture_raw("authentication_summary");
+    assert!(output.contains("Authenticated hosts: 0"));
+    assert!(output.contains("Unauthenticated hosts: 0"));
+}
+
+#[test]
+fn top_25_template_lists_plugins() {
+    let output = render_template_capture_raw("top_25");
+    assert!(output.contains("Top Plugins"));
+    assert!(output.contains("Test Plugin (100): 1"));
+}
+
+#[test]
 fn pci_compliance_template_renders() {
     run_template("pci_compliance", "PCI / DSS Compliance Overview");
 }

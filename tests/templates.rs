@@ -246,3 +246,14 @@ fn host_findings_csv_template_renders() {
         "Critical Plugin",
     );
 }
+
+#[test]
+fn assets_template_renders_host_details() {
+    let contents = render_template_capture("assets");
+    assert!(contents.contains("Name: 192.168.0.1"));
+    assert!(contents.contains("FQDN: example.local"));
+    assert!(contents.contains("IP: 192.168.0.1"));
+    assert!(contents.contains("NetBIOS: EXAMPLE"));
+    assert!(contents.contains("MAC: 00:11:22:33:44:55"));
+    assert!(contents.contains("OS: Linux"));
+}

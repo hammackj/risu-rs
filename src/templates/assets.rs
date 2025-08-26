@@ -1,6 +1,12 @@
+use std::collections::HashMap;
+use std::error::Error;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+
+use crate::parser::NessusReport;
+use crate::renderer::Renderer;
+use crate::template::{template_helper, Template};
 
 /// Raw bytes of the embedded Nessus logo image.
 pub const NESSUS_LOGO_JPG: &[u8; 425] = &[
@@ -63,3 +69,55 @@ pub fn write_nessus_logo_jpg_to(dir: &Path) -> io::Result<PathBuf> {
     fs::write(&path, NESSUS_LOGO_JPG)?;
     Ok(path)
 }
+
+/// Template that lists host asset details.
+pub struct AssetsTemplate;
+
+impl Template for AssetsTemplate {
+    fn name(&self) -> &str {
+        "assets"
+    }
+
+    fn generate(
+        &self,
+        report: &NessusReport,
+        renderer: &mut dyn Renderer,
+        args: &HashMap<String, String>,
+    ) -> Result<(), Box<dyn Error>> {
+        let title = args
+            .get("title")
+            .map(String::as_str)
+            .unwrap_or("Assets Report");
+        renderer.text(&template_helper::heading(1, title))?;
+
+        for host in &report.hosts {
+            if let Some(name) = &host.name {
+                renderer.text(&template_helper::heading(2, name))?;
+            }
+            let mut fields = Vec::new();
+            if let Some(name) = &host.name {
+                fields.push(template_helper::field("Name", name));
+            }
+            if let Some(fqdn) = &host.fqdn {
+                fields.push(template_helper::field("FQDN", fqdn));
+            }
+            if let Some(ip) = &host.ip {
+                fields.push(template_helper::field("IP", ip));
+            }
+            if let Some(netbios) = &host.netbios {
+                fields.push(template_helper::field("NetBIOS", netbios));
+            }
+            if let Some(mac) = &host.mac {
+                fields.push(template_helper::field("MAC", mac));
+            }
+            if let Some(os) = &host.os {
+                fields.push(template_helper::field("OS", os));
+            }
+            if !fields.is_empty() {
+                renderer.text(&fields.join("\n"))?;
+            }
+        }
+        Ok(())
+    }
+}
+

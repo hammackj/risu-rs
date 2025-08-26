@@ -25,6 +25,7 @@ pub mod template;
 pub mod top_25;
 
 pub use authentication_summary::AuthenticationSummaryTemplate;
+pub use assets::AssetsTemplate;
 pub use cover_sheet::CoverSheetTemplate;
 pub use exec_summary::ExecSummaryTemplate;
 pub use executive_summary_detailed::ExecutiveSummaryDetailedTemplate;

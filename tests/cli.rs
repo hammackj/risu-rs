@@ -133,3 +133,15 @@ fn template_arg_overrides_title() {
     let contents = fs::read_to_string(output).unwrap();
     assert!(contents.contains("Custom Title"));
 }
+
+#[test]
+fn list_post_process_shows_plugins() {
+    let assert = Command::cargo_bin("risu-rs")
+        .unwrap()
+        .args(["--no-banner", "--list-post-process"])
+        .assert()
+        .success();
+    let output = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+    assert!(output.contains("fix_ips"));
+    assert!(output.contains("normalize_plugin_names"));
+}

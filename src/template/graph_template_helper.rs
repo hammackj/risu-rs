@@ -120,6 +120,7 @@ mod tests {
             family_selections: Vec::new(),
             plugin_preferences: Vec::new(),
             server_preferences: Vec::new(),
+            filters: Default::default(),
         }
     }
 

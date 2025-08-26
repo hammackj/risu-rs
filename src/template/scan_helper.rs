@@ -53,6 +53,28 @@ pub fn authentication_section(report: &NessusReport) -> String {
     )
 }
 
+/// Summarize any filters applied to the report.
+pub fn filter_summary(report: &NessusReport) -> String {
+    let mut parts = Vec::new();
+    if let Some(net) = &report.filters.host_ip {
+        parts.push(format!("host-ip {net}"));
+    }
+    if let Some(mac) = &report.filters.host_mac {
+        parts.push(format!("host-mac {mac}"));
+    }
+    if let Some(id) = report.filters.host_id {
+        parts.push(format!("host-id {id}"));
+    }
+    if let Some(pid) = report.filters.plugin_id {
+        parts.push(format!("plugin-id {pid}"));
+    }
+    if parts.is_empty() {
+        "No filters applied".into()
+    } else {
+        format!("Filters applied: {}", parts.join(", "))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -93,6 +115,7 @@ mod tests {
             family_selections: Vec::new(),
             plugin_preferences: Vec::new(),
             server_preferences: Vec::new(),
+            filters: Default::default(),
         }
     }
 
@@ -159,5 +182,19 @@ mod tests {
         let section = authentication_section(&report);
         assert!(section.contains("Authenticated hosts: 1"));
         assert!(section.contains("Unauthenticated hosts: 1"));
+    }
+
+    #[test]
+    fn filter_summary_reports_filters() {
+        let mut report = sample_report();
+        report.filters.host_id = Some(1);
+        report.filters.plugin_id = Some(42);
+        report.filters.host_mac = Some("aa:bb:cc".into());
+        report.filters.host_ip = "10.0.0.0/24".parse().ok();
+        let s = filter_summary(&report);
+        assert!(s.contains("host-id 1"));
+        assert!(s.contains("plugin-id 42"));
+        assert!(s.contains("host-mac aa:bb:cc"));
+        assert!(s.contains("host-ip 10.0.0.0/24"));
     }
 }

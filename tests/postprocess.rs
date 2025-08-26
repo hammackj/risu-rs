@@ -1,5 +1,5 @@
 use risu_rs::models::{Host, Item, Plugin};
-use risu_rs::parser::NessusReport;
+use risu_rs::parser::{Filters, NessusReport};
 use risu_rs::postprocess;
 use std::collections::HashSet;
 
@@ -28,7 +28,7 @@ fn fix_ips_sets_missing_ip() {
         hosts: vec![host("10.0.0.1", None)],
         ..NessusReport::default()
     };
-    postprocess::process(&mut report, &HashSet::new(), &HashSet::new());
+    postprocess::process(&mut report, &HashSet::new(), &HashSet::new(), &Filters::default());
     assert_eq!(report.hosts[0].ip.as_deref(), Some("10.0.0.1"));
 }
 
@@ -41,7 +41,7 @@ fn sort_hosts_orders_by_ip() {
         ],
         ..NessusReport::default()
     };
-    postprocess::process(&mut report, &HashSet::new(), &HashSet::new());
+    postprocess::process(&mut report, &HashSet::new(), &HashSet::new(), &Filters::default());
     assert_eq!(report.hosts[0].ip.as_deref(), Some("10.0.0.1"));
     assert_eq!(report.hosts[1].ip.as_deref(), Some("10.0.0.2"));
 }
@@ -54,7 +54,7 @@ fn normalize_plugin_names_sanitizes_strings() {
         plugins: vec![plugin],
         ..NessusReport::default()
     };
-    postprocess::process(&mut report, &HashSet::new(), &HashSet::new());
+    postprocess::process(&mut report, &HashSet::new(), &HashSet::new(), &Filters::default());
     assert_eq!(report.plugins[0].plugin_name.as_deref(), Some("Example"));
 }
 
@@ -66,7 +66,7 @@ fn root_cause_sets_known_plugins() {
         plugins: vec![plugin],
         ..NessusReport::default()
     };
-    postprocess::process(&mut report, &HashSet::new(), &HashSet::new());
+    postprocess::process(&mut report, &HashSet::new(), &HashSet::new(), &Filters::default());
     assert_eq!(
         report.plugins[0].root_cause.as_deref(),
         Some("Vendor Patch")
@@ -87,7 +87,7 @@ fn risk_score_computes_scores() {
         items: vec![item],
         ..NessusReport::default()
     };
-    postprocess::process(&mut report, &HashSet::new(), &HashSet::new());
+    postprocess::process(&mut report, &HashSet::new(), &HashSet::new(), &Filters::default());
     assert_eq!(report.items[0].risk_score, Some(4));
     assert_eq!(report.plugins[0].risk_score, Some(4));
     assert_eq!(report.hosts[0].risk_score, Some(4));
@@ -105,7 +105,7 @@ fn downgrade_plugins_adjusts_severity() {
         items: vec![item1, item2],
         ..NessusReport::default()
     };
-    postprocess::process(&mut report, &HashSet::new(), &HashSet::new());
+    postprocess::process(&mut report, &HashSet::new(), &HashSet::new(), &Filters::default());
     assert_eq!(report.items[0].severity, Some(0));
     assert_eq!(report.items[1].severity, Some(2));
 }
@@ -118,7 +118,7 @@ fn adobe_air_rollup_creates_summary_item() {
         items: vec![item],
         ..NessusReport::default()
     };
-    postprocess::process(&mut report, &HashSet::new(), &HashSet::new());
+    postprocess::process(&mut report, &HashSet::new(), &HashSet::new(), &Filters::default());
     // original item downgraded
     let orig = report.items.iter().find(|i| i.plugin_id == Some(56959)).unwrap();
     assert_eq!(orig.severity, Some(-1));

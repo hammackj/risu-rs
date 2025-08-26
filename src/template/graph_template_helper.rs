@@ -30,28 +30,79 @@ pub fn top_vuln_data_uri(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::graphs::count_os;
     use crate::models::{Host, Item};
     use tempfile::tempdir;
 
     fn report() -> NessusReport {
         NessusReport {
             version: "1".into(),
-            hosts: vec![Host {
-                id: 1,
-                nessus_report_id: None,
-                name: Some("host1".into()),
-                os: Some("Linux".into()),
-                mac: None,
-                start: None,
-                end: None,
-                ip: Some("10.0.0.1".into()),
-                fqdn: None,
-                netbios: None,
-                notes: None,
-                risk_score: None,
-                user_id: None,
-                engagement_id: None,
-            }],
+            hosts: vec![
+                Host {
+                    id: 1,
+                    nessus_report_id: None,
+                    name: Some("host1".into()),
+                    os: Some("Windows 2000".into()),
+                    mac: None,
+                    start: None,
+                    end: None,
+                    ip: Some("10.0.0.1".into()),
+                    fqdn: None,
+                    netbios: None,
+                    notes: None,
+                    risk_score: None,
+                    user_id: None,
+                    engagement_id: None,
+                },
+                Host {
+                    id: 2,
+                    nessus_report_id: None,
+                    name: Some("host2".into()),
+                    os: Some("Microsoft Windows XP Professional".into()),
+                    mac: None,
+                    start: None,
+                    end: None,
+                    ip: Some("10.0.0.2".into()),
+                    fqdn: None,
+                    netbios: None,
+                    notes: None,
+                    risk_score: None,
+                    user_id: None,
+                    engagement_id: None,
+                },
+                Host {
+                    id: 3,
+                    nessus_report_id: None,
+                    name: Some("host3".into()),
+                    os: Some("Microsoft Windows 2000 Professional".into()),
+                    mac: None,
+                    start: None,
+                    end: None,
+                    ip: Some("10.0.0.3".into()),
+                    fqdn: None,
+                    netbios: None,
+                    notes: None,
+                    risk_score: None,
+                    user_id: None,
+                    engagement_id: None,
+                },
+                Host {
+                    id: 4,
+                    nessus_report_id: None,
+                    name: Some("host4".into()),
+                    os: Some("Windows XP".into()),
+                    mac: None,
+                    start: None,
+                    end: None,
+                    ip: Some("10.0.0.4".into()),
+                    fqdn: None,
+                    netbios: None,
+                    notes: None,
+                    risk_score: None,
+                    user_id: None,
+                    engagement_id: None,
+                },
+            ],
             items: vec![Item {
                 id: 1,
                 plugin_name: Some("vuln".into()),
@@ -79,5 +130,13 @@ mod tests {
         assert!(os_uri.starts_with("data:image/png;base64,"));
         let vuln_uri = top_vuln_data_uri(&r, dir.path(), 5).unwrap();
         assert!(vuln_uri.starts_with("data:image/png;base64,"));
+    }
+
+    #[test]
+    fn os_counts_collapse_variants() {
+        let r = report();
+        let counts = count_os(&r);
+        assert_eq!(counts.get("Windows 2000"), Some(&2));
+        assert_eq!(counts.get("Windows XP"), Some(&2));
     }
 }

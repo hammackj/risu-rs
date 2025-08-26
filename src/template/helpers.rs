@@ -73,6 +73,56 @@ pub fn attachment_path(att: &Attachment) -> Option<&str> {
     att.path.as_deref()
 }
 
+/// Plugins that indicate default credentials were accepted.
+pub static DEFAULT_CREDENTIAL_PLUGINS: &[i32] = &[
+    1000, 2000, 3000,
+];
+
+/// Determine if the given plugin ID indicates default credentials.
+pub fn has_default_credentials(plugin_id: i32) -> bool {
+    DEFAULT_CREDENTIAL_PLUGINS.contains(&plugin_id)
+}
+
+/// Generate a warning section when default credential plugins are present.
+///
+/// `plugin_ids` should contain all plugin identifiers observed in a report or
+/// host. If any match [`DEFAULT_CREDENTIAL_PLUGINS`], a markdown formatted
+/// section is returned, otherwise an empty string is produced.
+pub fn default_credentials_section(plugin_ids: &[i32]) -> String {
+    let found: Vec<i32> = plugin_ids
+        .iter()
+        .copied()
+        .filter(|id| has_default_credentials(*id))
+        .collect();
+
+    if found.is_empty() {
+        String::new()
+    } else {
+        let mut section = String::from("### Default Credentials Detected\n\n");
+        section.push_str(
+            "The following plugins indicate that default credentials were\
+             accepted by the target:\n",
+        );
+        for id in found {
+            section.push_str(&format!("- Plugin {id}\n"));
+        }
+        section
+    }
+}
+
+/// Generate an appendix entry for default credential findings.
+///
+/// This simply wraps [`default_credentials_section`] in a second-level heading
+/// suitable for inclusion in an appendix.
+pub fn default_credentials_appendix_section(plugin_ids: &[i32]) -> String {
+    let section = default_credentials_section(plugin_ids);
+    if section.is_empty() {
+        String::new()
+    } else {
+        format!("## Default Credentials\n\n{}", section)
+    }
+}
+
 /// Fetch a host property by name for a given host.
 pub fn host_property(
     conn: &mut SqliteConnection,
@@ -183,6 +233,23 @@ pub fn plugin_bid_identifiers(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn detects_default_credential_plugins() {
+        assert!(has_default_credentials(1000));
+        assert!(!has_default_credentials(42));
+    }
+
+    #[test]
+    fn default_credential_sections_generate_output() {
+        let plugins = vec![1, 1000, 2000];
+        let section = default_credentials_section(&plugins);
+        assert!(!section.is_empty());
+        assert!(section.contains("Plugin 1000"));
+        let appendix = default_credentials_appendix_section(&plugins);
+        assert!(appendix.contains("Default Credentials"));
+        assert!(appendix.contains("Plugin 2000"));
+    }
 
     #[test]
     fn unsupported_os_message() {

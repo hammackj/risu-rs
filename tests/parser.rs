@@ -136,6 +136,20 @@ fn parses_plugin_metadata_fields() {
 }
 
 #[test]
+fn parses_plugin_flags() {
+    let path = fs::canonicalize("tests/fixtures/plugin_flags.nessus").unwrap();
+    let report = parse_file(&path).unwrap();
+
+    let plugin = report
+        .plugins
+        .iter()
+        .find(|p| p.plugin_id == Some(1))
+        .unwrap();
+    assert_eq!(plugin.in_the_news, Some(true));
+    assert_eq!(plugin.exploited_by_nessus, Some(true));
+}
+
+#[test]
 fn maps_pluginid_zero_to_one() {
     let path = fs::canonicalize("tests/fixtures/plugin_id0.nessus").unwrap();
     let report = parse_file(&path).unwrap();

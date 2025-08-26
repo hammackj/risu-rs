@@ -51,3 +51,8 @@ fn ms_update_summary_template_renders() {
 fn graphs_template_renders() {
     run_template("graphs", "OS distribution");
 }
+
+#[test]
+fn pci_compliance_template_renders() {
+    run_template("pci_compliance", "PCI / DSS Compliance Overview");
+}

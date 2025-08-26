@@ -69,9 +69,11 @@ fn parses_traceroute_pcidss_and_logs_unknown() {
         })
         .collect();
 
-    assert!(props
-        .iter()
-        .any(|(n, v)| n == "netbios-name" && v == "EXAMPLE"));
+    assert!(
+        props
+            .iter()
+            .any(|(n, v)| n == "netbios-name" && v == "EXAMPLE")
+    );
     assert!(props.iter().any(|(n, _)| n == "traceroute_hop_0"));
     assert!(props.iter().any(|(n, _)| n == "pcidss:status"));
 
@@ -210,7 +212,10 @@ fn recognizes_host_property_patterns() {
     fs::write(&path, xml).unwrap();
 
     let buf = Arc::new(Mutex::new(Vec::new()));
-    let make_writer = { let buf = buf.clone(); move || VecWriter(buf.clone()) };
+    let make_writer = {
+        let buf = buf.clone();
+        move || VecWriter(buf.clone())
+    };
     let subscriber = fmt()
         .with_max_level(Level::DEBUG)
         .with_writer(make_writer)
@@ -229,8 +234,12 @@ fn recognizes_host_property_patterns() {
     assert!(names.contains(&"patch-summary-cves".to_string()));
     assert!(names.contains(&"mcafee-epo-guid".to_string()));
 
-    assert!(report.references.iter().any(|r| r.source.as_deref() == Some("MSFT")
-        && r.value.as_deref() == Some("MS13-001")));
+    assert!(
+        report
+            .references
+            .iter()
+            .any(|r| r.source.as_deref() == Some("MSFT") && r.value.as_deref() == Some("MS13-001"))
+    );
 
     let logs = String::from_utf8(buf.lock().unwrap().clone()).unwrap();
     assert!(
@@ -239,4 +248,14 @@ fn recognizes_host_property_patterns() {
         logs
     );
     assert!(!logs.contains("Unknown XML elements encountered"));
+}
+
+#[test]
+fn fails_on_unsupported_root_element() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("bad.xml");
+    fs::write(&path, "<foo></foo>").unwrap();
+
+    let err = parse_file(&path).err().expect("should fail");
+    assert!(matches!(err, risu_rs::error::Error::InvalidDocument(_)));
 }

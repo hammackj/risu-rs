@@ -1,4 +1,5 @@
 use assert_cmd::Command;
+use predicates::str::contains;
 use std::fs;
 use tempfile::tempdir;
 
@@ -148,4 +149,36 @@ fn list_post_process_shows_plugins() {
     let output = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
     assert!(output.contains("fix_ips"));
     assert!(output.contains("normalize_plugin_names"));
+}
+
+#[test]
+fn parse_invalid_input_displays_error() {
+    let tmp = tempdir().unwrap();
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .args(["--no-banner", "--create-config-file"])
+        .current_dir(&tmp)
+        .assert()
+        .success();
+
+    let bad = tmp.path().join("bad.xml");
+    fs::write(&bad, "<foo></foo>").unwrap();
+
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .current_dir(&tmp)
+        .args([
+            "--no-banner",
+            "--config-file",
+            "config.yml",
+            "parse",
+            bad.to_str().unwrap(),
+            "-o",
+            "out.csv",
+            "-t",
+            "simple",
+        ])
+        .assert()
+        .failure()
+        .stderr(contains("unsupported root element"));
 }

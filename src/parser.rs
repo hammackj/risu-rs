@@ -175,14 +175,38 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
             let report = simple_nexpose::parse_file(path)?;
             Ok(report.into())
         }
-        Some("xml") => {
-            if nexpose::nexpose_document::is_nexpose(path)? {
-                nexpose::nexpose_document::parse_file(path)
-            } else {
-                parse_nessus(path)
+        _ => {
+            let root = root_element_name(path)?;
+            match root.as_deref() {
+                Some("NeXposeSimpleXML") => nexpose::nexpose_document::parse_file(path),
+                Some("NessusClientData_v2") => parse_nessus(path),
+                Some(other) => Err(crate::error::Error::InvalidDocument(format!(
+                    "{}: unsupported root element '{}'",
+                    path.display(),
+                    other
+                ))),
+                None => Err(crate::error::Error::InvalidDocument(format!(
+                    "{}: missing root element",
+                    path.display()
+                ))),
             }
         }
-        _ => parse_nessus(path),
+    }
+}
+
+fn root_element_name(path: &Path) -> Result<Option<String>, crate::error::Error> {
+    let mut reader = Reader::from_file(path)?;
+    reader.trim_text(true);
+    let mut buf = Vec::new();
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Start(e) | Event::Empty(e) => {
+                return Ok(Some(String::from_utf8_lossy(e.name().as_ref()).to_string()));
+            }
+            Event::Eof => return Ok(None),
+            _ => {}
+        }
+        buf.clear();
     }
 }
 

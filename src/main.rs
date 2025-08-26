@@ -32,6 +32,7 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::collections::{HashMap, HashSet};
 use tracing::error;
+use ipnet::IpNet;
 
 #[derive(Parser)]
 #[command(author, version, about, disable_version_flag = true)]
@@ -126,6 +127,18 @@ enum Commands {
         /// Only include findings older than the specified number of days
         #[arg(long = "older-than", value_name = "days")]
         older_than: Option<i64>,
+        /// Only include hosts whose IP matches the CIDR
+        #[arg(long = "host-ip", value_name = "cidr")]
+        host_ip: Option<IpNet>,
+        /// Only include hosts with the specified MAC address
+        #[arg(long = "host-mac", value_name = "addr")]
+        host_mac: Option<String>,
+        /// Only include the host with the given internal ID
+        #[arg(long = "host-id", value_name = "id")]
+        host_id: Option<i32>,
+        /// Only include items matching this plugin ID
+        #[arg(long = "plugin-id", value_name = "id")]
+        plugin_id: Option<i32>,
     },
     /// Index NASL plugins and store metadata
     PluginIndex {
@@ -314,13 +327,24 @@ fn run() -> Result<(), error::Error> {
             report_company,
             report_classification,
             older_than,
+            host_ip,
+            host_mac,
+            host_id,
+            plugin_id,
         }) => {
             let blacklist: HashSet<i32> = cli.blacklist.iter().cloned().collect();
             let whitelist: HashSet<i32> = cli.whitelist.iter().cloned().collect();
             let mut report = parser::parse_file(&file)?;
-            parser::filter_report(&mut report, &whitelist, &blacklist);
+            let filters = parser::Filters {
+                host_ip,
+                host_mac,
+                host_id,
+                plugin_id,
+            };
+            report.filters = filters.clone();
+            parser::filter_report(&mut report, &whitelist, &blacklist, &filters);
             if post_process {
-                postprocess::process(&mut report, &whitelist, &blacklist);
+                postprocess::process(&mut report, &whitelist, &blacklist, &filters);
             }
 
             // Populate report metadata from CLI or configuration

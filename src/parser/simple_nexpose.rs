@@ -84,6 +84,7 @@ impl From<SimpleNexpose> for super::NessusReport {
             family_selections: Vec::new(),
             plugin_preferences: Vec::new(),
             server_preferences: Vec::new(),
+            filters: super::Filters::default(),
         }
     }
 }

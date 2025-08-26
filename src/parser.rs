@@ -6,10 +6,12 @@ mod simple_nexpose;
 use std::collections::{BTreeSet, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::net::IpAddr;
 
 use quick_xml::Reader;
 use quick_xml::events::Event;
 use tracing::{debug, info};
+use ipnet::IpNet;
 
 use crate::models::{
     Attachment, FamilySelection, Host, HostProperty, Item, Patch, Plugin, PluginPreference, Policy,
@@ -142,6 +144,16 @@ pub struct NessusReport {
     pub family_selections: Vec<FamilySelection>,
     pub plugin_preferences: Vec<PluginPreference>,
     pub server_preferences: Vec<ServerPreference>,
+    pub filters: Filters,
+}
+
+/// Filters applied to a parsed report.
+#[derive(Default, Clone)]
+pub struct Filters {
+    pub host_ip: Option<IpNet>,
+    pub host_mac: Option<String>,
+    pub host_id: Option<i32>,
+    pub plugin_id: Option<i32>,
 }
 
 impl std::ops::Deref for NessusReport {
@@ -210,26 +222,86 @@ fn root_element_name(path: &Path) -> Result<Option<String>, crate::error::Error>
     }
 }
 
-/// Remove items based on whitelist/blacklist sets of plugin IDs.
+/// Remove hosts/items based on various filters.
 pub fn filter_report(
     report: &mut NessusReport,
     whitelist: &HashSet<i32>,
     blacklist: &HashSet<i32>,
+    filters: &Filters,
 ) {
-    if whitelist.is_empty() && blacklist.is_empty() {
+    if whitelist.is_empty()
+        && blacklist.is_empty()
+        && filters.host_ip.is_none()
+        && filters.host_mac.is_none()
+        && filters.host_id.is_none()
+        && filters.plugin_id.is_none()
+    {
         return;
     }
 
-    let mut index_map: Vec<Option<i32>> = Vec::new();
-    let mut new_items = Vec::new();
-    for item in report.items.drain(..) {
-        let pid = item.plugin_id.unwrap_or(0);
-        let keep = (whitelist.is_empty() || whitelist.contains(&pid)) && !blacklist.contains(&pid);
+    // Host filtering
+    let mut host_index_map: Vec<Option<i32>> = Vec::new();
+    let mut new_hosts = Vec::new();
+    for host in report.hosts.drain(..) {
+        let mut keep = true;
+        if let Some(id) = filters.host_id {
+            if host.id != id {
+                keep = false;
+            }
+        }
+        if let Some(ref mac) = filters.host_mac {
+            let m = host
+                .mac
+                .as_ref()
+                .map(|s| s.to_ascii_lowercase());
+            if m.as_deref() != Some(&mac.to_ascii_lowercase()) {
+                keep = false;
+            }
+        }
+        if let Some(net) = filters.host_ip {
+            let ip_ok = host
+                .ip
+                .as_ref()
+                .and_then(|s| s.parse::<IpAddr>().ok())
+                .map_or(false, |ip| net.contains(&ip));
+            if !ip_ok {
+                keep = false;
+            }
+        }
         if keep {
-            index_map.push(Some(new_items.len() as i32));
+            host_index_map.push(Some(new_hosts.len() as i32));
+            let mut h = host;
+            h.id = new_hosts.len() as i32;
+            new_hosts.push(h);
+        } else {
+            host_index_map.push(None);
+        }
+    }
+    report.hosts = new_hosts;
+
+    // Item filtering
+    let mut item_index_map: Vec<Option<i32>> = Vec::new();
+    let mut new_items = Vec::new();
+    for mut item in report.items.drain(..) {
+        let pid = item.plugin_id.unwrap_or(0);
+        let mut keep = (whitelist.is_empty() || whitelist.contains(&pid)) && !blacklist.contains(&pid);
+        if let Some(pid_f) = filters.plugin_id {
+            if item.plugin_id != Some(pid_f) {
+                keep = false;
+            }
+        }
+        if let Some(hid) = item.host_id {
+            if let Some(Some(new_hid)) = host_index_map.get(hid as usize) {
+                item.host_id = Some(*new_hid);
+            } else {
+                keep = false;
+            }
+        }
+        if keep {
+            item_index_map.push(Some(new_items.len() as i32));
             new_items.push(item);
         } else {
-            index_map.push(None);
+            item_index_map.push(None);
         }
     }
     report.items = new_items;
@@ -244,9 +316,40 @@ pub fn filter_report(
         .retain(|a| used_attachments.contains(&a.id));
 
     report.service_descriptions.retain_mut(|sd| {
+        if let Some(old_h) = sd.host_id {
+            if let Some(Some(new_h)) = host_index_map.get(old_h as usize) {
+                sd.host_id = Some(*new_h);
+            } else {
+                return false;
+            }
+        }
         if let Some(old) = sd.item_id {
-            if let Some(Some(new_idx)) = index_map.get(old as usize) {
+            if let Some(Some(new_idx)) = item_index_map.get(old as usize) {
                 sd.item_id = Some(*new_idx);
+            } else {
+                return false;
+            }
+        }
+        true
+    });
+
+    report.host_properties.retain_mut(|hp| {
+        if let Some(old) = hp.host_id {
+            if let Some(Some(new_idx)) = host_index_map.get(old as usize) {
+                hp.host_id = Some(*new_idx);
+                true
+            } else {
+                false
+            }
+        } else {
+            true
+        }
+    });
+
+    report.patches.retain_mut(|p| {
+        if let Some(old) = p.host_id {
+            if let Some(Some(new_idx)) = host_index_map.get(old as usize) {
+                p.host_id = Some(*new_idx);
                 true
             } else {
                 false
@@ -261,9 +364,14 @@ pub fn filter_report(
             if (!whitelist.is_empty() && !whitelist.contains(&pid)) || blacklist.contains(&pid) {
                 return false;
             }
+            if let Some(pid_f) = filters.plugin_id {
+                if pid != pid_f {
+                    return false;
+                }
+            }
         }
         if let Some(old) = r.item_id {
-            if let Some(Some(new_idx)) = index_map.get(old as usize) {
+            if let Some(Some(new_idx)) = item_index_map.get(old as usize) {
                 r.item_id = Some(*new_idx);
                 true
             } else {
@@ -869,6 +977,9 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                     if let Some(host) = current_host.take() {
                         report.hosts.push(host);
                         let host_index = (report.hosts.len() - 1) as i32;
+                        if let Some(h) = report.hosts.get_mut(host_index as usize) {
+                            h.id = host_index;
+                        }
                         for mut patch in current_patches.drain(..) {
                             patch.host_id = Some(host_index);
                             report.patches.push(patch);

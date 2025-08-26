@@ -55,3 +55,6 @@ Maintainers can use the provided Makefile to cut releases:
 - `make push VERSION=x.y.z` – push commits and tags to `origin`.
 - `make publish` – publish the crate to crates.io.
 - `make release VERSION=x.y.z [PUBLISH=1]` – run build, hashing, tagging and pushing; set `PUBLISH=1` to also publish the crate.
+- `make clean` – remove build artifacts.
+- `make test` – run tests against all supported database backends (`make test-sqlite`, `make test-postgres`, `make test-mysql` to run individually).
+- `make notify VERSION=x.y.z WEBHOOK=https://example.com/hook` – send a release announcement to a webhook (e.g. Slack).

@@ -2,7 +2,7 @@ BINARIES := risu-rs
 TARGET_DIR := target/release
 CURRENT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 
-.PHONY: build hash tag push publish release
+.PHONY: build hash tag push publish release clean test test-sqlite test-postgres test-mysql notify
 
 ## Build optimized binaries
 build:
@@ -33,3 +33,34 @@ publish:
 # Usage: make release VERSION=x.y.z [PUBLISH=1]
 release: hash tag push
 	@if [ -n "$(PUBLISH)" ]; then cargo publish; fi
+
+## Remove build artifacts
+clean:
+	cargo clean
+	rm -f $(TARGET_DIR)/*.sha256 $(TARGET_DIR)/*.sha512
+
+## Run tests for all supported database backends
+test: test-sqlite test-postgres test-mysql
+
+## Run tests against the SQLite backend
+test-sqlite:
+	DATABASE_URL=sqlite://:memory: cargo test
+
+## Run tests against the PostgreSQL backend
+# Usage: make test-postgres DATABASE_URL=postgres://...
+test-postgres:
+	@test -n "$(DATABASE_URL)" || (echo "Set DATABASE_URL=postgres://..." && exit 1)
+	cargo test --no-default-features --features postgres
+
+## Run tests against the MySQL backend
+# Usage: make test-mysql DATABASE_URL=mysql://...
+test-mysql:
+	@test -n "$(DATABASE_URL)" || (echo "Set DATABASE_URL=mysql://..." && exit 1)
+	cargo test --no-default-features --features mysql
+
+## Send a release notification to a webhook (e.g. Slack)
+# Usage: make notify VERSION=x.y.z WEBHOOK=https://example.com/hook
+notify:
+	@test -n "$(VERSION)" || (echo "Set VERSION=x.y.z" && exit 1)
+	@test -n "$(WEBHOOK)" || (echo "Set WEBHOOK=<url>" && exit 1)
+	curl -X POST -H 'Content-type: application/json' --data '{"text":"risu-rs v$(VERSION) released"}' $(WEBHOOK)

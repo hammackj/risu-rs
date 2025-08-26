@@ -9,9 +9,16 @@ risu-rs --create-config-file       # write default config.yml
 risu-rs migrate --create-tables    # run database migrations
 risu-rs parse scan.nessus -o report.csv -t simple --post-process
 risu-rs parse scan.nessus -o report.pdf -t simple --template-arg title="Custom Title"
+risu-rs parse scan.nessus -o report.csv -t simple --blacklist 19506,34221
+risu-rs parse scan.nessus -o report.pdf -t simple --whitelist 1001,1002
 risu-rs --list-templates           # list available templates
 risu-rs --list-post-process        # list post-process plugins
 ```
+
+Use `--blacklist` or `--whitelist` to control which plugin IDs are included in
+the parsed report. Both options accept comma-separated ID lists. When a
+whitelist is provided, only matching plugin IDs are kept; blacklisted IDs are
+always removed.
 
 ## Configuration
 

@@ -3,7 +3,7 @@
 mod nexpose;
 mod simple_nexpose;
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -139,6 +139,74 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
         }
         _ => parse_nessus(path),
     }
+}
+
+/// Remove items based on whitelist/blacklist sets of plugin IDs.
+pub fn filter_report(
+    report: &mut NessusReport,
+    whitelist: &HashSet<i32>,
+    blacklist: &HashSet<i32>,
+) {
+    if whitelist.is_empty() && blacklist.is_empty() {
+        return;
+    }
+
+    let mut index_map: Vec<Option<i32>> = Vec::new();
+    let mut new_items = Vec::new();
+    for item in report.items.drain(..) {
+        let pid = item.plugin_id.unwrap_or(0);
+        let keep = (whitelist.is_empty() || whitelist.contains(&pid)) && !blacklist.contains(&pid);
+        if keep {
+            index_map.push(Some(new_items.len() as i32));
+            new_items.push(item);
+        } else {
+            index_map.push(None);
+        }
+    }
+    report.items = new_items;
+
+    let used_attachments: HashSet<i32> =
+        report.items.iter().filter_map(|i| i.attachment_id).collect();
+    report.attachments.retain(|a| used_attachments.contains(&a.id));
+
+    report.service_descriptions.retain_mut(|sd| {
+        if let Some(old) = sd.item_id {
+            if let Some(Some(new_idx)) = index_map.get(old as usize) {
+                sd.item_id = Some(*new_idx);
+                true
+            } else {
+                false
+            }
+        } else {
+            true
+        }
+    });
+
+    report.references.retain_mut(|r| {
+        if let Some(pid) = r.plugin_id {
+            if (!whitelist.is_empty() && !whitelist.contains(&pid)) || blacklist.contains(&pid) {
+                return false;
+            }
+        }
+        if let Some(old) = r.item_id {
+            if let Some(Some(new_idx)) = index_map.get(old as usize) {
+                r.item_id = Some(*new_idx);
+                true
+            } else {
+                false
+            }
+        } else {
+            true
+        }
+    });
+
+    let allowed_pids: HashSet<i32> = report.items.iter().filter_map(|i| i.plugin_id).collect();
+    report.plugins.retain(|p| p.plugin_id.map_or(false, |pid| allowed_pids.contains(&pid)));
+    report.plugin_preferences
+        .retain(|p| p.plugin_id.map_or(true, |pid| allowed_pids.contains(&pid)));
+    report
+        .policy_plugins
+        .retain(|p| p.plugin_id.map_or(true, |pid| allowed_pids.contains(&pid)));
 }
 
 /// Validate and parse a Nessus XML file into ORM models.

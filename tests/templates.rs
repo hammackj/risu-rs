@@ -127,6 +127,15 @@ fn notable_template_renders() {
 }
 
 #[test]
+fn notable_template_includes_high_severity_findings() {
+    run_template_fixture(
+        "notable",
+        "tests/fixtures/notable_high.nessus",
+        "Critical Plugin",
+    );
+}
+
+#[test]
 fn ms_update_summary_template_renders() {
     run_template("ms_update_summary", "Missing Microsoft Updates");
 }

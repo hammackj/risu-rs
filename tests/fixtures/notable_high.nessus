@@ -1,0 +1,13 @@
+<NessusClientData_v2 version="2.0">
+  <ReportHost name="host1">
+    <HostProperties>
+      <tag name="host-ip">10.0.0.1</tag>
+      <tag name="host-fqdn">host1.local</tag>
+    </HostProperties>
+    <ReportItem pluginID="99999" pluginName="Critical Plugin" severity="4" port="0" svc_name="" protocol="tcp">
+      <description>Critical issue description.</description>
+      <risk_factor>Critical</risk_factor>
+    </ReportItem>
+  </ReportHost>
+</NessusClientData_v2>
+

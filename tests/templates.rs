@@ -219,3 +219,30 @@ fn exec_summary_template_matches_ruby() {
     let ruby_str = String::from_utf8_lossy(&ruby_out.stdout).trim().to_string();
     assert_eq!(rust_out.trim(), ruby_str);
 }
+
+#[test]
+fn finding_statistics_template_renders() {
+    run_template_fixture(
+        "finding_statistics",
+        "tests/fixtures/notable_high.nessus",
+        "High Risks: 1",
+    );
+}
+
+#[test]
+fn notable_detailed_template_renders() {
+    run_template_fixture(
+        "notable_detailed",
+        "tests/fixtures/notable_high.nessus",
+        "Critical Plugin",
+    );
+}
+
+#[test]
+fn host_findings_csv_template_renders() {
+    run_template_fixture(
+        "host_findings_csv",
+        "tests/fixtures/notable_high.nessus",
+        "Critical Plugin",
+    );
+}

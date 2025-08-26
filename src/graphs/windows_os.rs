@@ -8,11 +8,30 @@ use plotters::prelude::*;
 
 use crate::schema::nessus_hosts::dsl::{nessus_hosts, os};
 
+pub(crate) fn normalize_windows_os(name: &str) -> &str {
+    if name.contains("Windows 2000") {
+        "Windows 2000"
+    } else if name.contains("Windows XP") {
+        "Windows XP"
+    } else {
+        name
+    }
+}
+
 /// Generate a pie chart showing the distribution of Windows operating systems.
 /// The result is saved to `dir/windows_os.png` and the path is returned.
 pub struct WindowsOsGraph;
 
 impl WindowsOsGraph {
+    fn count(results: Vec<Option<String>>) -> HashMap<String, usize> {
+        let mut counts: HashMap<String, usize> = HashMap::new();
+        for name in results.into_iter().flatten() {
+            let normalized = normalize_windows_os(&name).to_string();
+            *counts.entry(normalized).or_insert(0) += 1;
+        }
+        counts
+    }
+
     /// Query the database for host operating system information and render a pie chart.
     pub fn generate(conn: &mut SqliteConnection, dir: &Path) -> Result<PathBuf, Box<dyn Error>> {
         let results: Vec<Option<String>> = nessus_hosts
@@ -20,10 +39,7 @@ impl WindowsOsGraph {
             .filter(os.like("Windows%"))
             .load(conn)?;
 
-        let mut counts: HashMap<String, usize> = HashMap::new();
-        for name in results.into_iter().flatten() {
-            *counts.entry(name).or_insert(0) += 1;
-        }
+        let counts = Self::count(results);
 
         if counts.is_empty() {
             return Err("no host data".into());
@@ -59,3 +75,22 @@ impl WindowsOsGraph {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalizes_windows_variants() {
+        let results = vec![
+            Some("Windows 2000".to_string()),
+            Some("Microsoft Windows 2000 Professional".to_string()),
+            Some("Windows XP".to_string()),
+            Some("Microsoft Windows XP Professional".to_string()),
+            Some("Windows Vista".to_string()),
+        ];
+        let counts = WindowsOsGraph::count(results);
+        assert_eq!(counts.get("Windows 2000"), Some(&2));
+        assert_eq!(counts.get("Windows XP"), Some(&2));
+        assert_eq!(counts.get("Windows Vista"), Some(&1));
+    }
+}

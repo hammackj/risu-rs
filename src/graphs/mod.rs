@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use plotters::prelude::*;
 
 use crate::parser::NessusReport;
+use windows_os::normalize_windows_os;
 
 pub mod top_vuln;
 pub mod windows_os;
@@ -14,12 +15,18 @@ pub use windows_os::WindowsOsGraph;
 
 /// Generate a pie chart showing operating system distribution among hosts.
 /// Returns the path to the generated PNG file.
-pub fn os_distribution(report: &NessusReport, dir: &Path) -> Result<PathBuf, Box<dyn Error>> {
+pub(crate) fn count_os(report: &NessusReport) -> HashMap<String, usize> {
     let mut counts: HashMap<String, usize> = HashMap::new();
     for host in &report.hosts {
         let os = host.os.clone().unwrap_or_else(|| "Unknown".to_string());
+        let os = normalize_windows_os(&os).to_string();
         *counts.entry(os).or_default() += 1;
     }
+    counts
+}
+
+pub fn os_distribution(report: &NessusReport, dir: &Path) -> Result<PathBuf, Box<dyn Error>> {
+    let counts = count_os(report);
 
     if counts.is_empty() {
         return Err("no host data".into());
@@ -52,6 +59,47 @@ pub fn os_distribution(report: &NessusReport, dir: &Path) -> Result<PathBuf, Box
     root.present()?;
     drop(root);
     Ok(file)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::Host;
+
+    fn host(os: &str) -> Host {
+        Host {
+            id: 0,
+            nessus_report_id: None,
+            name: None,
+            os: Some(os.to_string()),
+            mac: None,
+            start: None,
+            end: None,
+            ip: None,
+            fqdn: None,
+            netbios: None,
+            notes: None,
+            risk_score: None,
+            user_id: None,
+            engagement_id: None,
+        }
+    }
+
+    #[test]
+    fn count_os_normalizes_windows_variants() {
+        let report = NessusReport {
+            hosts: vec![
+                host("Windows 2000"),
+                host("Microsoft Windows 2000 SP4"),
+                host("Windows XP"),
+                host("Microsoft Windows XP Professional"),
+            ],
+            ..NessusReport::default()
+        };
+        let counts = count_os(&report);
+        assert_eq!(counts.get("Windows 2000"), Some(&2));
+        assert_eq!(counts.get("Windows XP"), Some(&2));
+    }
 }
 
 /// Generate a bar chart of the top `n` vulnerabilities by occurrence.
@@ -111,7 +159,10 @@ pub fn top_vulnerabilities(
         .draw()?;
 
     chart.draw_series(data.iter().enumerate().map(|(i, (_, c))| {
-        Rectangle::new([(i as i32, 0), (i as i32 + 1, *c)], Palette99::pick(i).filled())
+        Rectangle::new(
+            [(i as i32, 0), (i as i32 + 1, *c)],
+            Palette99::pick(i).filled(),
+        )
     }))?;
 
     root.present()?;

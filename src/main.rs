@@ -285,6 +285,12 @@ fn run() -> Result<(), error::Error> {
         manager.register(Box::new(templates::FindingStatisticsTemplate));
         manager.register(Box::new(templates::HostFindingsCsvTemplate));
         manager.register(Box::new(templates::Top25Template));
+        manager.register(Box::new(templates::FindingsHostTemplate));
+        manager.register(Box::new(templates::FindingsSummaryTemplate));
+        manager.register(Box::new(templates::FindingsSummaryWithPluginIdTemplate));
+        manager.register(Box::new(templates::MaliciousProcessDetectionTemplate));
+        manager.register(Box::new(templates::MissingRootCausesTemplate));
+        manager.register(Box::new(templates::MSWSUSFindingsTemplate));
         manager.load_templates().map_err(error::Error::Template)?;
         manager.display();
         return Ok(());
@@ -350,6 +356,12 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::FindingStatisticsTemplate));
             manager.register(Box::new(templates::HostFindingsCsvTemplate));
             manager.register(Box::new(templates::Top25Template));
+            manager.register(Box::new(templates::FindingsHostTemplate));
+            manager.register(Box::new(templates::FindingsSummaryTemplate));
+            manager.register(Box::new(templates::FindingsSummaryWithPluginIdTemplate));
+            manager.register(Box::new(templates::MaliciousProcessDetectionTemplate));
+            manager.register(Box::new(templates::MissingRootCausesTemplate));
+            manager.register(Box::new(templates::MSWSUSFindingsTemplate));
             manager.load_templates().map_err(error::Error::Template)?;
             let template_args: HashMap<String, String> = template_args.into_iter().collect();
             let mut conn = SqliteConnection::establish(&cfg.database_url)?;

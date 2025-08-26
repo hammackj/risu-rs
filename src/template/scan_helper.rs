@@ -1,5 +1,6 @@
 use super::helpers;
 use crate::parser::NessusReport;
+use std::collections::HashMap;
 
 /// Produce a simple scan summary.
 pub fn summary(report: &NessusReport) -> String {
@@ -11,22 +12,28 @@ pub fn summary(report: &NessusReport) -> String {
     )
 }
 
+/// Convert plugin 19506 output to a map of key/value pairs.
+pub fn scan_info_to_hash(output: &str) -> HashMap<String, String> {
+    output
+        .lines()
+        .filter_map(|line| line.split_once(':'))
+        .map(|(k, v)| (k.trim().to_ascii_lowercase(), v.trim().to_string()))
+        .collect()
+}
+
 /// Calculate counts of authenticated vs unauthenticated hosts using plugin 19506 output.
-fn authenticated_count(report: &NessusReport) -> (usize, usize) {
+pub fn authenticated_count(report: &NessusReport) -> (usize, usize) {
     let mut auth = 0usize;
     let mut unauth = 0usize;
     for item in &report.items {
         if item.plugin_id == Some(19506) {
             if let Some(ref output) = item.plugin_output {
-                for line in output.lines() {
-                    if let Some((key, value)) = line.split_once(':') {
-                        if key.trim().eq_ignore_ascii_case("credentialed checks") {
-                            if value.to_lowercase().contains("yes") {
-                                auth += 1;
-                            } else {
-                                unauth += 1;
-                            }
-                        }
+                let info = scan_info_to_hash(output);
+                if let Some(v) = info.get("credentialed checks") {
+                    if v.to_ascii_lowercase().contains("yes") {
+                        auth += 1;
+                    } else {
+                        unauth += 1;
                     }
                 }
             }
@@ -95,6 +102,38 @@ mod tests {
         assert!(s.contains("Hosts: 1"));
         assert!(s.contains("Items: 1"));
         assert!(s.starts_with("## Scan Summary"));
+    }
+
+    #[test]
+    fn scan_info_to_hash_parses_output() {
+        let out = "Credentialed checks : yes\nScanner : Nessus";
+        let h = scan_info_to_hash(out);
+        assert_eq!(h.get("credentialed checks"), Some(&"yes".to_string()));
+        assert_eq!(h.get("scanner"), Some(&"Nessus".to_string()));
+    }
+
+    #[test]
+    fn authenticated_count_classifies_hosts() {
+        let mut report = sample_report();
+        report.items = vec![
+            Item {
+                id: 1,
+                host_id: Some(0),
+                plugin_id: Some(19506),
+                plugin_output: Some("Credentialed checks : yes".into()),
+                ..Default::default()
+            },
+            Item {
+                id: 2,
+                host_id: Some(0),
+                plugin_id: Some(19506),
+                plugin_output: Some("Credentialed checks : no".into()),
+                ..Default::default()
+            },
+        ];
+        let (auth, unauth) = authenticated_count(&report);
+        assert_eq!(auth, 1);
+        assert_eq!(unauth, 1);
     }
 
     #[test]

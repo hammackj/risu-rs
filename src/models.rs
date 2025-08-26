@@ -6,6 +6,7 @@
 
 pub mod attachment;
 pub mod family_selection;
+pub mod host;
 pub mod host_property;
 pub mod item;
 pub mod plugin_metadata;

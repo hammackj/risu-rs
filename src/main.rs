@@ -111,8 +111,7 @@ enum Commands {
     /// Create a new template skeleton source file
     CreateTemplate {
         /// Template name
-        #[arg(long)]
-        name: Option<String>,
+        name: String,
         /// Template author
         #[arg(long)]
         author: Option<String>,
@@ -342,18 +341,10 @@ fn run() -> Result<(), error::Error> {
             author,
             renderer,
         }) => {
-            let name = match name {
-                Some(n) => n,
-                None => template::create::prompt("Template name")?,
-            };
-            let author = match author {
-                Some(a) => a,
-                None => template::create::prompt("Author")?,
-            };
-            let renderer = match renderer {
-                Some(r) => r,
-                None => template::create::prompt("Renderer type (pdf, csv, nil)")?,
-            };
+            let author = author
+                .or_else(|| std::env::var("USER").ok())
+                .unwrap_or_else(|| "unknown".to_string());
+            let renderer = renderer.unwrap_or_else(|| "pdf".to_string());
             template::create::scaffold(&name, &author, &renderer)?;
         }
         None => {}

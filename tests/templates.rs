@@ -106,6 +106,21 @@ fn render_template_capture(name: &str) -> String {
     fs::read_to_string(output).unwrap()
 }
 
+fn render_template_capture_raw(name: &str) -> String {
+    let csv_data = render_template_capture(name);
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_reader(csv_data.as_bytes());
+    let mut lines = Vec::new();
+    for rec in rdr.records() {
+        let rec = rec.unwrap();
+        if let Some(cell) = rec.get(0) {
+            lines.push(cell.to_string());
+        }
+    }
+    lines.join("\n")
+}
+
 #[test]
 fn notable_template_renders() {
     run_template("notable", "Notable Findings");
@@ -141,4 +156,16 @@ fn host_summary_template_renders() {
     assert!(contents.contains("Total Hosts: 1"));
     assert!(contents.contains("No network shares found."));
     assert!(contents.contains("Info: 1"));
+}
+
+#[test]
+fn exec_summary_template_matches_ruby() {
+    let rust_out = render_template_capture_raw("exec_summary");
+    let ruby_out = Command::new("ruby")
+        .arg("tests/fixtures/exec_summary_ruby.rb")
+        .arg("tests/fixtures/sample.nessus")
+        .output()
+        .expect("failed to run ruby script");
+    let ruby_str = String::from_utf8_lossy(&ruby_out.stdout).trim().to_string();
+    assert_eq!(rust_out.trim(), ruby_str);
 }

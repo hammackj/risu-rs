@@ -138,6 +138,16 @@ pub fn host_property(
         .map(|res| res.flatten())
 }
 
+/// Convenience wrapper for retrieving a host's NetBIOS name.
+///
+/// This simply calls [`host_property`] with the `netbios-name` key.
+pub fn host_netbios_name(
+    conn: &mut SqliteConnection,
+    host_id_val: i32,
+) -> QueryResult<Option<String>> {
+    host_property(conn, host_id_val, "netbios-name")
+}
+
 /// Retrieve all properties for a host.
 pub fn host_properties(
     conn: &mut SqliteConnection,
@@ -412,6 +422,25 @@ mod tests {
         let props = host_properties(&mut conn, 1).unwrap();
         assert_eq!(props.len(), 1);
         assert_eq!(props[0].name.as_deref(), Some("foo"));
+    }
+
+    #[test]
+    fn host_netbios_helper() {
+        let mut conn = setup();
+        diesel::insert_into(nessus_hosts::table)
+            .values(&NewHost { ip: Some("10.0.0.1"), })
+            .execute(&mut conn)
+            .unwrap();
+        diesel::insert_into(nessus_host_properties::table)
+            .values(&NewHostProperty {
+                host_id: Some(1),
+                name: Some("netbios-name"),
+                value: Some("EXAMPLE"),
+            })
+            .execute(&mut conn)
+            .unwrap();
+        let val = host_netbios_name(&mut conn, 1).unwrap();
+        assert_eq!(val.as_deref(), Some("EXAMPLE"));
     }
 
     #[test]

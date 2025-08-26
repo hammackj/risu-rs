@@ -69,8 +69,14 @@ fn parses_traceroute_pcidss_and_logs_unknown() {
         })
         .collect();
 
+    assert!(props
+        .iter()
+        .any(|(n, v)| n == "netbios-name" && v == "EXAMPLE"));
     assert!(props.iter().any(|(n, _)| n == "traceroute_hop_0"));
     assert!(props.iter().any(|(n, _)| n == "pcidss:status"));
+
+    let host = report.hosts.first().unwrap();
+    assert_eq!(host.netbios.as_deref(), Some("EXAMPLE"));
 
     let logs = String::from_utf8(buf.lock().unwrap().clone()).unwrap();
     assert!(logs.contains("Unknown XML elements encountered"));

@@ -1,0 +1,9 @@
+<NessusClientData_v2 xmlns:cm="http://example.com/cm">
+  <ReportHost name="h">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="1" severity="0" pluginName="plug">
+      <cm:in-the-news>true</cm:in-the-news>
+      <cm:exploited-by-nessus>true</cm:exploited-by-nessus>
+    </ReportItem>
+  </ReportHost>
+</NessusClientData_v2>

@@ -29,7 +29,7 @@ mod version;
 use clap::{Parser, Subcommand};
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tracing::error;
 
 #[derive(Parser)]
@@ -56,6 +56,12 @@ struct Cli {
     /// List available templates
     #[arg(long = "list-templates")]
     list_templates: bool,
+    /// Comma-separated plugin IDs to blacklist
+    #[arg(long, value_name = "id,...", value_delimiter = ',')]
+    blacklist: Vec<i32>,
+    /// Comma-separated plugin IDs to whitelist
+    #[arg(long, value_name = "id,...", value_delimiter = ',')]
+    whitelist: Vec<i32>,
     /// Open an interactive database console
     #[arg(long)]
     console: bool,
@@ -267,9 +273,12 @@ fn run() -> Result<(), error::Error> {
             renderer: renderer_opt,
             template_args,
         }) => {
+            let blacklist: HashSet<i32> = cli.blacklist.iter().cloned().collect();
+            let whitelist: HashSet<i32> = cli.whitelist.iter().cloned().collect();
             let mut report = parser::parse_file(&file)?;
+            parser::filter_report(&mut report, &whitelist, &blacklist);
             if post_process {
-                postprocess::process(&mut report);
+                postprocess::process(&mut report, &whitelist, &blacklist);
             }
 
             let paths = cfg

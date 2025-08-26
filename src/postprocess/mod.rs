@@ -4,7 +4,8 @@
 //! [`inventory`] crate. They run sequentially on the [`NessusReport`] after
 //! parsing to adjust or enrich data.
 
-use crate::parser::NessusReport;
+use crate::parser::{filter_report, NessusReport};
+use std::collections::HashSet;
 use tracing::info;
 
 /// Information about a post-processing plugin.
@@ -67,10 +68,17 @@ impl Registry {
     }
 }
 
-/// Convenience helper to run all discovered plugins on a report.
-pub fn process(report: &mut NessusReport) {
+/// Convenience helper to run all discovered plugins on a report, honoring
+/// whitelist/blacklist filters.
+pub fn process(
+    report: &mut NessusReport,
+    whitelist: &HashSet<i32>,
+    blacklist: &HashSet<i32>,
+) {
+    filter_report(report, whitelist, blacklist);
     let registry = Registry::discover();
     registry.run(report);
+    filter_report(report, whitelist, blacklist);
 }
 
 /// Display the names of all registered plugins.

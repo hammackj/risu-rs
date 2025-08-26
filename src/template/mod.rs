@@ -95,6 +95,17 @@ impl TemplateManager {
         }
     }
 
+    fn validate(&self, tmpl: &dyn Template) -> Result<(), String> {
+        let name = tmpl.name();
+        if name.trim().is_empty() {
+            return Err("template name cannot be empty".into());
+        }
+        if self.templates.contains_key(name) {
+            return Err(format!("template '{}' already registered", name));
+        }
+        Ok(())
+    }
+
     /// Load templates from all configured paths. Each dynamic library is
     /// expected to expose a `create_template` function returning
     /// `Box<dyn Template>`.
@@ -113,14 +124,14 @@ impl TemplateManager {
                                     match ctor {
                                         Ok(ctor) => {
                                             let tmpl = ctor();
-                                            let name = tmpl.name().to_string();
-                                            if self.templates.contains_key(&name) {
+                                            if let Err(e) = self.validate(tmpl.as_ref()) {
                                                 eprintln!(
-                                                    "template '{}' already registered, skipping {}",
-                                                    name,
-                                                    p.display()
+                                                    "invalid template module '{}': {}",
+                                                    p.display(),
+                                                    e
                                                 );
                                             } else {
+                                                let name = tmpl.name().to_string();
                                                 self.templates.insert(name, tmpl);
                                                 self._libs.push(lib);
                                             }
@@ -148,10 +159,10 @@ impl TemplateManager {
 
     /// Register a template instance manually.
     pub fn register(&mut self, tmpl: Box<dyn Template>) {
-        let name = tmpl.name().to_string();
-        if self.templates.contains_key(&name) {
-            eprintln!("template '{}' already registered, skipping", name);
+        if let Err(e) = self.validate(tmpl.as_ref()) {
+            eprintln!("invalid template '{}': {}", tmpl.name(), e);
         } else {
+            let name = tmpl.name().to_string();
             self.templates.insert(name, tmpl);
         }
     }

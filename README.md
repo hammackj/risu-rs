@@ -13,12 +13,16 @@ risu-rs parse scan.nessus -o report.csv -t simple --blacklist 19506,34221
 risu-rs parse scan.nessus -o report.pdf -t simple --whitelist 1001,1002
 risu-rs --list-templates           # list available templates
 risu-rs --list-post-process        # list post-process plugins
+risu-rs --search-output keyword    # find keyword in plugin output
 ```
 
 Use `--blacklist` or `--whitelist` to control which plugin IDs are included in
 the parsed report. Both options accept comma-separated ID lists. When a
 whitelist is provided, only matching plugin IDs are kept; blacklisted IDs are
 always removed.
+
+The `--search-output` option performs a case-insensitive search of the
+`plugin_output` column and prints matching host IP and plugin name pairs.
 
 ## Configuration
 

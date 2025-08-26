@@ -59,6 +59,9 @@ struct Cli {
     /// `src/templates`, the current working directory, and `$HOME/.risu/templates`.
     #[arg(long = "list-templates")]
     list_templates: bool,
+    /// Search for a keyword in plugin output and print host/plugin pairs
+    #[arg(long = "search-output", value_name = "keyword")]
+    search_output: Option<String>,
     /// Comma-separated plugin IDs to blacklist
     #[arg(long, value_name = "id,...", value_delimiter = ',')]
     blacklist: Vec<i32>,
@@ -311,6 +314,35 @@ fn run() -> Result<(), error::Error> {
         manager.register(Box::new(templates::MSWSUSFindingsTemplate));
         manager.load_templates().map_err(error::Error::Template)?;
         manager.display();
+        return Ok(());
+    }
+
+    if let Some(keyword) = cli.search_output.as_deref() {
+        use crate::schema::nessus_hosts::dsl::{ip, nessus_hosts};
+
+        let mut conn = SqliteConnection::establish(&cfg.database_url)?;
+        let items = models::Item::search_plugin_output(&mut conn, keyword)?;
+        for item in items {
+            let host = item
+                .host_id
+                .and_then(|hid| {
+                    nessus_hosts
+                        .find(hid)
+                        .select(ip)
+                        .first::<Option<String>>(&mut conn)
+                        .ok()
+                        .flatten()
+                })
+                .unwrap_or_else(|| "<unknown>".into());
+            let plugin = item
+                .plugin_name
+                .unwrap_or_else(|| {
+                    item.plugin_id
+                        .map(|p| p.to_string())
+                        .unwrap_or_else(|| "<unknown>".into())
+                });
+            println!("{host} - {plugin}");
+        }
         return Ok(());
     }
 

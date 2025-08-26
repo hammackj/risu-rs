@@ -80,10 +80,10 @@ fn create_template_writes_skeleton() {
     Command::cargo_bin("risu-rs")
         .unwrap()
         .current_dir(&tmp)
+        .env("HOME", tmp.path())
         .args([
             "--no-banner",
             "create-template",
-            "--name",
             "example",
             "--author",
             "Alice",
@@ -92,7 +92,11 @@ fn create_template_writes_skeleton() {
         ])
         .assert()
         .success();
-    let path = tmp.path().join("templates").join("example.rs");
+    let path = tmp
+        .path()
+        .join(".risu")
+        .join("templates")
+        .join("example.rs");
     assert!(path.exists());
 }
 

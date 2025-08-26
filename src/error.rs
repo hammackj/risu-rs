@@ -16,6 +16,8 @@ pub enum Error {
     Regex(#[from] regex::Error),
     #[error(transparent)]
     Yaml(#[from] serde_yaml::Error),
+    #[error("invalid document: {0}")]
+    InvalidDocument(String),
     #[error("migration error: {0}")]
     Migration(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("template error: {0}")]

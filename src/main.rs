@@ -158,7 +158,14 @@ where
 
 fn main() {
     if let Err(e) = run() {
-        error!("{e}");
+        match e {
+            error::Error::InvalidDocument(msg) => {
+                eprintln!("Failed to parse document: {msg}");
+            }
+            other => {
+                error!("{other}");
+            }
+        }
         std::process::exit(1);
     }
 }

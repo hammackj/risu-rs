@@ -21,6 +21,7 @@ mod plugin_index;
 mod postprocess;
 mod renderers;
 use renderers as renderer;
+mod analysis;
 mod schema;
 mod template;
 mod templates;

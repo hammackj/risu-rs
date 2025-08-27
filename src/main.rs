@@ -86,6 +86,9 @@ struct Cli {
     /// Test database connection
     #[arg(long)]
     test_connection: bool,
+    /// Database backend to use (sqlite, mysql, postgres)
+    #[arg(long, value_parser = ["sqlite", "mysql", "postgres"], default_value = "sqlite")]
+    database_backend: String,
     /// Print the current database schema version
     #[arg(long = "db-version")]
     db_version: bool,
@@ -244,9 +247,15 @@ fn run() -> Result<(), error::Error> {
         }
     }
 
-    let cfg = config::load_config(&config_path).unwrap_or_default();
+    let mut cfg = config::load_config(&config_path).unwrap_or_default();
+    cfg.database_backend = cli.database_backend.clone();
 
     if cli.db_version {
+        if cfg.database_backend != "sqlite" {
+            return Err(error::Error::Config(
+                "db-version is only supported with the sqlite backend".to_string(),
+            ));
+        }
         let mut conn = SqliteConnection::establish(&cfg.database_url)?;
         match version::db_version(&mut conn)? {
             Some(v) => println!("{v}"),
@@ -256,24 +265,75 @@ fn run() -> Result<(), error::Error> {
     }
 
     if cli.create_tables || cli.drop_tables {
-        migrate::run(cli.create_tables, cli.drop_tables)?;
+        migrate::run(
+            &cfg.database_url,
+            &cfg.database_backend,
+            cli.create_tables,
+            cli.drop_tables,
+        )?;
         println!("Migration complete");
         return Ok(());
     }
 
     if cli.test_connection {
-        match SqliteConnection::establish(&cfg.database_url) {
-            Ok(_) => println!("Database connection successful"),
-            Err(e) => {
-                println!("Database connection failed: {e}");
-                return Err(e.into());
+        match cfg.database_backend.as_str() {
+            "postgres" => {
+                #[cfg(feature = "postgres")]
+                {
+                    match diesel::pg::PgConnection::establish(&cfg.database_url) {
+                        Ok(_) => println!("Database connection successful"),
+                        Err(e) => {
+                            println!("Database connection failed: {e}");
+                            return Err(e.into());
+                        }
+                    }
+                }
+                #[cfg(not(feature = "postgres"))]
+                {
+                    println!("PostgreSQL support not enabled");
+                }
+            }
+            "mysql" => {
+                #[cfg(feature = "mysql")]
+                {
+                    match diesel::mysql::MysqlConnection::establish(&cfg.database_url) {
+                        Ok(_) => println!("Database connection successful"),
+                        Err(e) => {
+                            println!("Database connection failed: {e}");
+                            return Err(e.into());
+                        }
+                    }
+                }
+                #[cfg(not(feature = "mysql"))]
+                {
+                    println!("MySQL support not enabled");
+                }
+            }
+            _ => {
+                match SqliteConnection::establish(&cfg.database_url) {
+                    Ok(_) => println!("Database connection successful"),
+                    Err(e) => {
+                        println!("Database connection failed: {e}");
+                        return Err(e.into());
+                    }
+                }
             }
         }
         return Ok(());
     }
 
-    if let Ok(mut conn) = SqliteConnection::establish(&cfg.database_url) {
-        version::warn_on_mismatch(&mut conn);
+    if cfg.database_backend == "sqlite" {
+        if let Ok(mut conn) = SqliteConnection::establish(&cfg.database_url) {
+            version::warn_on_mismatch(&mut conn);
+        }
+    }
+
+    if cfg.database_backend != "sqlite" {
+        println!(
+            "Only migration and connection tests are supported for backend '{}'",
+            cfg.database_backend
+        );
+        return Ok(());
     }
 
     if cli.console {

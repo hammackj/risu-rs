@@ -4,6 +4,7 @@
 //!
 //! ```yaml
 //! database_url: sqlite://:memory:
+//! database_backend: sqlite
 //! log_level: info
 //! template_paths:
 //!   - ./templates
@@ -27,6 +28,9 @@ pub struct Config {
     /// URL of the database to connect to.
     #[serde(default = "default_database_url")]
     pub database_url: String,
+    /// Database backend to use (sqlite, mysql, postgres).
+    #[serde(default = "default_database_backend")]
+    pub database_backend: String,
     /// Logging level used by the application.
     #[serde(default = "default_log_level")]
     pub log_level: String,
@@ -63,6 +67,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             database_url: default_database_url(),
+            database_backend: default_database_backend(),
             log_level: default_log_level(),
             log_format: default_log_format(),
             template_paths: default_template_paths(),
@@ -79,6 +84,10 @@ impl Default for Config {
 
 fn default_database_url() -> String {
     "sqlite://:memory:".to_string()
+}
+
+fn default_database_backend() -> String {
+    "sqlite".to_string()
 }
 
 fn default_log_level() -> String {
@@ -139,6 +148,9 @@ pub fn load_config(path: &Path) -> Result<Config, crate::error::Error> {
 
     if cfg.database_url.trim().is_empty() {
         cfg.database_url = default_database_url();
+    }
+    if cfg.database_backend.trim().is_empty() {
+        cfg.database_backend = default_database_backend();
     }
     if cfg.log_level.trim().is_empty() {
         cfg.log_level = default_log_level();

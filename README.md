@@ -34,6 +34,7 @@ Settings are read from a YAML file (default: `config.yml`):
 
 ```yaml
 database_url: sqlite://:memory:
+database_backend: sqlite
 log_level: info
 template_paths:
   - ./templates
@@ -53,6 +54,22 @@ severity_overrides:
 the command line with `--template-arg` override these defaults. The
 `severity_overrides` map adjusts item severities after parsing, allowing
 specific plugin IDs to be downgraded or upgraded.
+
+## Database backends
+
+`risu-rs` supports SQLite, PostgreSQL and MySQL. Select a backend using the
+`--database-backend` CLI option or the `database_backend` field in `config.yml`.
+The corresponding Diesel feature must be enabled at compile time. For testing,
+provide a `DATABASE_URL` pointing at the desired database and run:
+
+```bash
+make test-sqlite                        # default SQLite in-memory database
+make test-postgres DATABASE_URL=postgres://user:pass@localhost/dbname
+make test-mysql    DATABASE_URL=mysql://user:pass@localhost/dbname
+```
+
+PostgreSQL and MySQL tests require running database servers and the appropriate
+Diesel features (`postgres` or `mysql`).
 
 ## Template API
 

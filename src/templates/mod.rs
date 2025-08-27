@@ -36,6 +36,7 @@ pub mod template;
 pub mod top_25;
 pub mod unsupported_os;
 pub mod unsupported_software;
+pub mod virtual_machine_summary;
 
 pub use assets::AssetsTemplate;
 pub use authentication_summary::AuthenticationSummaryTemplate;
@@ -75,3 +76,4 @@ pub use template::TemplateTemplate;
 pub use top_25::Top25Template;
 pub use unsupported_os::UnsupportedOsTemplate;
 pub use unsupported_software::UnsupportedSoftwareTemplate;
+pub use virtual_machine_summary::VirtualMachineSummaryTemplate;

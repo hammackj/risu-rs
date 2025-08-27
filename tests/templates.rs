@@ -420,3 +420,15 @@ fn microsoft_windows_unquoted_service_path_enumeration_template_lists_hosts() {
         "winhost",
     );
 }
+
+#[test]
+fn virtual_machine_summary_template_lists_hosts() {
+    let out = render_template_capture_raw_fixture(
+        "virtual_machine_summary",
+        "tests/fixtures/virtual_machines.nessus",
+    );
+    assert!(out.contains("vmwarehost"));
+    assert!(out.contains("hypervhost"));
+    assert!(out.contains("VMware"));
+    assert!(out.contains("Hyper-V"));
+}

@@ -2,6 +2,12 @@
 
 A Rust rewrite of the Risu reporting utilities.
 
+## Documentation
+
+- [News](docs/NEWS.markdown)
+- [Installation Guides](docs/install_guides/README.markdown)
+- [Known Issues](docs/known_issues.markdown)
+
 ## Command-line usage
 
 ```bash

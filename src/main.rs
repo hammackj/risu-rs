@@ -55,7 +55,7 @@ struct Cli {
     /// Print application, Rust, and crate versions
     #[arg(long)]
     version: bool,
-    /// Print environment details for bug reports
+    /// Collect environment details for bug reports
     #[arg(long = "bug-report")]
     bug_report: bool,
     /// List available post-processing plugins

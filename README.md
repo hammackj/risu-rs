@@ -17,6 +17,9 @@ risu-rs --search-output keyword    # find keyword in plugin output
 risu-rs --bug-report               # print environment details for bug reports
 ```
 
+When reporting issues, run `risu-rs --bug-report` and include the generated
+output in your bug report to help with troubleshooting.
+
 Use `--blacklist` or `--whitelist` to control which plugin IDs are included in
 the parsed report. Both options accept comma-separated ID lists. When a
 whitelist is provided, only matching plugin IDs are kept; blacklisted IDs are

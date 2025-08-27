@@ -7,10 +7,16 @@
 //! log_level: info
 //! template_paths:
 //!   - ./templates
+//! # Prefix added to report output paths when generating reports
+//! report_prefix: reports/
+//! # Default argument values passed to templates keyed by template name
+//! template_settings:
+//!   simple:
+//!     title: Example Report
 //! ```
 
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
+use std::{collections::HashMap, fs, path::Path};
 
 /// Application configuration loaded from a YAML file.
 #[derive(Debug, Serialize, Deserialize)]
@@ -39,6 +45,12 @@ pub struct Config {
     /// Report classification metadata
     #[serde(default)]
     pub report_classification: Option<String>,
+    /// Prefix added to report output paths when generating reports
+    #[serde(default)]
+    pub report_prefix: Option<String>,
+    /// Default argument values passed to templates keyed by template name
+    #[serde(default)]
+    pub template_settings: HashMap<String, HashMap<String, String>>,
 }
 
 impl Default for Config {
@@ -52,6 +64,8 @@ impl Default for Config {
             report_author: None,
             report_company: None,
             report_classification: None,
+            report_prefix: None,
+            template_settings: HashMap::new(),
         }
     }
 }
@@ -82,7 +96,21 @@ pub fn create_config(path: &Path) -> Result<(), crate::error::Error> {
     }
     let cfg = Config::default();
     let yaml = serde_yaml::to_string(&cfg)?;
-    fs::write(path, yaml)?;
+    let mut output = String::new();
+    for line in yaml.lines() {
+        if line.starts_with("report_prefix:") {
+            output.push_str("# Prefix added to report output paths\n");
+            output.push_str("# report_prefix: reports/\n");
+        }
+        if line.starts_with("template_settings:") {
+            output
+                .push_str("# Default argument values passed to templates keyed by template name\n");
+            output.push_str("# template_settings:\n#   simple:\n#     title: Example Report\n");
+        }
+        output.push_str(line);
+        output.push('\n');
+    }
+    fs::write(path, output)?;
     Ok(())
 }
 
@@ -109,6 +137,14 @@ pub fn load_config(path: &Path) -> Result<Config, crate::error::Error> {
     }
     if cfg.log_format.trim().is_empty() {
         cfg.log_format = default_log_format();
+    }
+    if cfg
+        .report_prefix
+        .as_ref()
+        .map(|s| s.trim().is_empty())
+        .unwrap_or(false)
+    {
+        cfg.report_prefix = None;
     }
 
     Ok(cfg)

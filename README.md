@@ -33,7 +33,17 @@ database_url: sqlite://:memory:
 log_level: info
 template_paths:
   - ./templates
+# Prefix added to report output paths
+report_prefix: reports/
+# Per-template default arguments keyed by template name
+template_settings:
+  simple:
+    title: "Example Report"
 ```
+
+`report_prefix` prepends a directory to generated report paths. The
+`template_settings` map supplies default template arguments; values provided on
+the command line with `--template-arg` override these defaults.
 
 ## Template API
 

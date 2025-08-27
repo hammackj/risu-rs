@@ -31,9 +31,9 @@ use chrono::{Duration, Utc};
 use clap::{Parser, Subcommand};
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
+use ipnet::IpNet;
 use std::collections::{HashMap, HashSet};
 use tracing::error;
-use ipnet::IpNet;
 
 #[derive(Parser)]
 #[command(author, version, about, disable_version_flag = true)]
@@ -336,13 +336,11 @@ fn run() -> Result<(), error::Error> {
                         .flatten()
                 })
                 .unwrap_or_else(|| "<unknown>".into());
-            let plugin = item
-                .plugin_name
-                .unwrap_or_else(|| {
-                    item.plugin_id
-                        .map(|p| p.to_string())
-                        .unwrap_or_else(|| "<unknown>".into())
-                });
+            let plugin = item.plugin_name.unwrap_or_else(|| {
+                item.plugin_id
+                    .map(|p| p.to_string())
+                    .unwrap_or_else(|| "<unknown>".into())
+            });
             println!("{host} - {plugin}");
         }
         return Ok(());
@@ -429,19 +427,29 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::MissingRootCausesTemplate));
             manager.register(Box::new(templates::MSWSUSFindingsTemplate));
             manager.load_templates().map_err(error::Error::Template)?;
-            let mut template_args: HashMap<String, String> = template_args.into_iter().collect();
+            let mut template_args_map: HashMap<String, String> = cfg
+                .template_settings
+                .get(&tmpl_name)
+                .cloned()
+                .unwrap_or_default();
+            template_args_map.extend(template_args.into_iter());
             if let Some(days) = older_than {
                 let cutoff = (Utc::now() - Duration::days(days)).naive_utc();
-                template_args.insert(
+                template_args_map.insert(
                     "cutoff_date".to_string(),
                     cutoff.format("%Y-%m-%d %H:%M:%S").to_string(),
                 );
             }
+            let output = cfg
+                .report_prefix
+                .as_ref()
+                .map(|p| std::path::PathBuf::from(p).join(&output))
+                .unwrap_or(output);
             let mut conn = SqliteConnection::establish(&cfg.database_url)?;
             let mut templater =
                 template::templater::Templater::new(tmpl_name, &mut conn, output, manager);
             templater
-                .generate(&report, renderer_opt.as_deref(), &template_args)
+                .generate(&report, renderer_opt.as_deref(), &template_args_map)
                 .map_err(error::Error::Template)?;
         }
         Some(Commands::PluginIndex { dir }) => {

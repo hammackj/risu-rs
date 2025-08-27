@@ -411,3 +411,12 @@ fn unsupported_os_template_lists_hosts() {
     assert!(out.contains("winhost"));
     assert!(out.contains("linuxhost"));
 }
+
+#[test]
+fn microsoft_windows_unquoted_service_path_enumeration_template_lists_hosts() {
+    run_template_fixture(
+        "microsoft_windows_unquoted_service_path_enumeration",
+        "tests/fixtures/unquoted_service_path.nessus",
+        "winhost",
+    );
+}

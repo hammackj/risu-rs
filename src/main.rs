@@ -326,6 +326,9 @@ fn run() -> Result<(), error::Error> {
         manager.register(Box::new(templates::FindingsSummaryWithPluginIdTemplate));
         manager.register(Box::new(templates::MaliciousProcessDetectionTemplate));
         manager.register(Box::new(templates::MissingRootCausesTemplate));
+        manager.register(Box::new(
+            templates::MicrosoftWindowsUnquotedServicePathEnumerationTemplate,
+        ));
         manager.register(Box::new(templates::MSWSUSFindingsTemplate));
         manager.register(Box::new(templates::ServiceInventoryTemplate));
         manager.register(Box::new(templates::UnsupportedOsTemplate));
@@ -459,6 +462,9 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::FindingsSummaryWithPluginIdTemplate));
             manager.register(Box::new(templates::MaliciousProcessDetectionTemplate));
             manager.register(Box::new(templates::MissingRootCausesTemplate));
+            manager.register(Box::new(
+                templates::MicrosoftWindowsUnquotedServicePathEnumerationTemplate,
+            ));
             manager.register(Box::new(templates::MSWSUSFindingsTemplate));
             manager.register(Box::new(templates::ServiceInventoryTemplate));
             manager.register(Box::new(templates::UnsupportedOsTemplate));

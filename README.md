@@ -14,6 +14,7 @@ risu-rs parse scan.nessus -o report.pdf -t simple --whitelist 1001,1002
 risu-rs --list-templates           # list available templates
 risu-rs --list-post-process        # list post-process plugins
 risu-rs --search-output keyword    # find keyword in plugin output
+risu-rs --bug-report               # print environment details for bug reports
 ```
 
 Use `--blacklist` or `--whitelist` to control which plugin IDs are included in

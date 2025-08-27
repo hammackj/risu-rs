@@ -152,6 +152,17 @@ fn list_post_process_shows_plugins() {
 }
 
 #[test]
+fn bug_report_shows_environment() {
+    let assert = Command::cargo_bin("risu-rs")
+        .unwrap()
+        .args(["--no-banner", "--bug-report"])
+        .assert()
+        .success();
+    let output = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+    assert!(output.contains("Include the above output"));
+}
+
+#[test]
 fn parse_invalid_input_displays_error() {
     let tmp = tempdir().unwrap();
     Command::cargo_bin("risu-rs")

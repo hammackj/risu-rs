@@ -7,6 +7,7 @@
 //! risu-rs parse scan.nessus -o out.csv -t simple --post-process
 //! risu-rs --list-templates           # list available templates
 //! risu-rs --list-post-process        # list post-process plugins
+//! risu-rs --bug-report               # print environment details for bug reports
 //! ```
 
 mod banner;
@@ -26,6 +27,7 @@ mod schema;
 mod template;
 mod templates;
 mod version;
+mod bug_report;
 
 use chrono::{Duration, Utc};
 use clap::{Parser, Subcommand};
@@ -53,6 +55,9 @@ struct Cli {
     /// Print application, Rust, and crate versions
     #[arg(long)]
     version: bool,
+    /// Print environment details for bug reports
+    #[arg(long = "bug-report")]
+    bug_report: bool,
     /// List available post-processing plugins
     #[arg(long = "list-post-process")]
     list_post_process: bool,
@@ -201,8 +206,18 @@ fn run() -> Result<(), error::Error> {
     }
     let cli = Cli::parse_from(args);
 
+    let config_path = cli
+        .config_file
+        .clone()
+        .unwrap_or_else(|| std::path::PathBuf::from("config.yml"));
+
     if cli.version {
         version::print();
+        return Ok(());
+    }
+
+    if cli.bug_report {
+        bug_report::print(&config_path);
         return Ok(());
     }
 
@@ -212,11 +227,6 @@ fn run() -> Result<(), error::Error> {
         cli.log_level.as_str()
     };
     init_logging(level, &cli.log_format);
-
-    let config_path = cli
-        .config_file
-        .clone()
-        .unwrap_or_else(|| std::path::PathBuf::from("config.yml"));
 
     if let Some(path_opt) = cli.create_config_file {
         let path = path_opt.unwrap_or_else(|| config_path.clone());

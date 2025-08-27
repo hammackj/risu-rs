@@ -32,6 +32,7 @@ rustc_version_runtime = "0.3"
 cargo-lock = "10.1"
 lazy_static = "1.5"
 ipnet = "2.9"
+sys-info = "0.9"
 
 [dev-dependencies]
 assert_cmd = "2.0"

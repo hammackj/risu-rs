@@ -67,7 +67,7 @@ pub fn unsupported_os_appendix_section(report: &NessusReport) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::Item;
+    use crate::models::{Item, Scanner};
 
     fn sample_host() -> Host {
         Host {
@@ -85,6 +85,7 @@ mod tests {
             risk_score: None,
             user_id: None,
             engagement_id: None,
+            scanner_id: None,
         }
     }
 
@@ -137,6 +138,7 @@ mod tests {
             user_id: None,
             engagement_id: None,
             rollup_finding: Some(false),
+            scanner_id: None,
         };
         let report = NessusReport {
             report: crate::models::Report::default(),
@@ -155,6 +157,7 @@ mod tests {
             plugin_preferences: Vec::new(),
             server_preferences: Vec::new(),
             filters: crate::parser::Filters::default(),
+            scanner: Scanner::default(),
         };
 
         let out = unsupported_os_windows(&report);

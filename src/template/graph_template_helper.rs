@@ -41,7 +41,7 @@ pub fn malware_data_uri(
 mod tests {
     use super::*;
     use crate::graphs::count_os;
-    use crate::models::{Host, Item, Report};
+    use crate::models::{Host, Item, Report, Scanner};
     use tempfile::tempdir;
 
     fn report() -> NessusReport {
@@ -64,6 +64,7 @@ mod tests {
                     risk_score: None,
                     user_id: None,
                     engagement_id: None,
+                    scanner_id: None,
                 },
                 Host {
                     id: 2,
@@ -80,6 +81,7 @@ mod tests {
                     risk_score: None,
                     user_id: None,
                     engagement_id: None,
+                    scanner_id: None,
                 },
                 Host {
                     id: 3,
@@ -96,6 +98,7 @@ mod tests {
                     risk_score: None,
                     user_id: None,
                     engagement_id: None,
+                    scanner_id: None,
                 },
                 Host {
                     id: 4,
@@ -112,6 +115,7 @@ mod tests {
                     risk_score: None,
                     user_id: None,
                     engagement_id: None,
+                    scanner_id: None,
                 },
             ],
             items: vec![Item {
@@ -133,6 +137,7 @@ mod tests {
             plugin_preferences: Vec::new(),
             server_preferences: Vec::new(),
             filters: Default::default(),
+            scanner: Scanner::default(),
         }
     }
 

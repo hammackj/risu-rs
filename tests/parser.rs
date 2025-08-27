@@ -233,11 +233,13 @@ fn parses_nessus_sqlite_db() {
     #[diesel(table_name = nessus_hosts)]
     struct NewHost<'a> {
         ip: Option<&'a str>,
+        scanner_id: Option<i32>,
     }
 
     diesel::insert_into(nessus_hosts::table)
         .values(&NewHost {
             ip: Some("1.2.3.4"),
+            scanner_id: None,
         })
         .execute(&mut conn)
         .unwrap();

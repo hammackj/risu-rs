@@ -39,6 +39,7 @@ pub struct Item {
     pub user_id: Option<i32>,
     pub engagement_id: Option<i32>,
     pub rollup_finding: Option<bool>,
+    pub scanner_id: Option<i32>,
 }
 
 impl Default for Item {
@@ -75,6 +76,7 @@ impl Default for Item {
             user_id: None,
             engagement_id: None,
             rollup_finding: Some(false),
+            scanner_id: None,
         }
     }
 }
@@ -83,14 +85,18 @@ impl Item {
     pub fn search_plugin_output(
         conn: &mut SqliteConnection,
         keyword: &str,
+        scanner: Option<i32>,
     ) -> QueryResult<Vec<Self>> {
         use crate::schema::nessus_items::dsl::*;
 
         let pattern = format!("%{}%", keyword);
-        nessus_items
+        let mut query = nessus_items
             .filter(plugin_output.is_not_null())
-            .filter(plugin_output.like(pattern))
-            .load::<Item>(conn)
+            .into_boxed();
+        if let Some(sid) = scanner {
+            query = query.filter(scanner_id.eq(sid));
+        }
+        query.filter(plugin_output.like(pattern)).load::<Item>(conn)
     }
 }
 
@@ -109,6 +115,7 @@ mod tests {
         plugin_id: Option<i32>,
         plugin_output: Option<&'a str>,
         plugin_name: Option<&'a str>,
+        scanner_id: Option<i32>,
     }
 
     fn setup() -> SqliteConnection {
@@ -127,12 +134,14 @@ mod tests {
                 plugin_id: None,
                 plugin_output: Some("foo"),
                 plugin_name: Some("A"),
+                scanner_id: None,
             },
             NewItem {
                 host_id: None,
                 plugin_id: None,
                 plugin_output: Some("FoO"),
                 plugin_name: Some("B"),
+                scanner_id: None,
             },
         ];
 
@@ -141,9 +150,9 @@ mod tests {
             .execute(&mut conn)
             .unwrap();
 
-        let lower = Item::search_plugin_output(&mut conn, "foo").unwrap();
+        let lower = Item::search_plugin_output(&mut conn, "foo", None).unwrap();
         assert_eq!(lower.len(), 2);
-        let upper = Item::search_plugin_output(&mut conn, "FOO").unwrap();
+        let upper = Item::search_plugin_output(&mut conn, "FOO", None).unwrap();
         assert_eq!(upper.len(), 2);
     }
 }

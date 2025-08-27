@@ -43,7 +43,7 @@ pub fn embed_graph(bytes: &[u8]) -> Result<String, Box<dyn Error>> {
 /// Generate the top vulnerabilities graph and return it as a data URI.
 pub fn top_vuln_graph(conn: &mut SqliteConnection) -> Result<String, Box<dyn Error>> {
     let dir: PathBuf = std::env::temp_dir();
-    let path = TopVulnGraph::generate(conn, &dir, 10)?;
+        let path = TopVulnGraph::generate(conn, &dir, 10, None)?;
     let bytes = fs::read(path)?;
     embed_graph(&bytes)
 }
@@ -318,6 +318,7 @@ mod tests {
             risk_score: None,
             user_id: None,
             engagement_id: None,
+            scanner_id: None,
         };
 
         let item = Item {
@@ -352,6 +353,7 @@ mod tests {
             user_id: None,
             engagement_id: None,
             rollup_finding: Some(false),
+            scanner_id: None,
         };
 
         assert!(has_unsupported_software(&host, &[item]));
@@ -388,6 +390,7 @@ mod tests {
             user_id: None,
             engagement_id: None,
             rollup_finding: Some(false),
+            scanner_id: None,
         };
         assert!(!has_unsupported_software(&host, &[clean]));
     }
@@ -462,6 +465,7 @@ mod tests {
     #[diesel(table_name = nessus_hosts)]
     struct NewHost<'a> {
         ip: Option<&'a str>,
+        scanner_id: Option<i32>,
     }
 
     #[derive(Insertable)]
@@ -548,6 +552,7 @@ mod tests {
         diesel::insert_into(nessus_hosts::table)
             .values(&NewHost {
                 ip: Some("10.0.0.1"),
+                scanner_id: None,
             })
             .execute(&mut conn)
             .unwrap();
@@ -572,6 +577,7 @@ mod tests {
         diesel::insert_into(nessus_hosts::table)
             .values(&NewHost {
                 ip: Some("10.0.0.1"),
+                scanner_id: None,
             })
             .execute(&mut conn)
             .unwrap();
@@ -640,6 +646,7 @@ mod tests {
         diesel::insert_into(nessus_hosts::table)
             .values(&NewHost {
                 ip: Some("10.0.0.1"),
+                scanner_id: None,
             })
             .execute(&mut conn)
             .unwrap();

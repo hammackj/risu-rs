@@ -33,6 +33,7 @@ diesel::table! {
         risk_score -> Nullable<Integer>,
         user_id -> Nullable<Integer>,
         engagement_id -> Nullable<Integer>,
+        scanner_id -> Nullable<Integer>,
     }
 }
 
@@ -145,6 +146,7 @@ diesel::table! {
         user_id -> Nullable<Integer>,
         engagement_id -> Nullable<Integer>,
         policy_id -> Nullable<Integer>,
+        scanner_id -> Nullable<Integer>,
     }
 }
 
@@ -181,6 +183,15 @@ diesel::table! {
         user_id -> Nullable<Integer>,
         engagement_id -> Nullable<Integer>,
         rollup_finding -> Nullable<Bool>,
+        scanner_id -> Nullable<Integer>,
+    }
+}
+
+diesel::table! {
+    scanners (id) {
+        id -> Integer,
+        scanner_type -> Text,
+        scanner_version -> Nullable<Text>,
     }
 }
 
@@ -260,4 +271,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     nessus_family_selections,
     nessus_plugin_preferences,
     nessus_server_preferences,
+    scanners,
 );

@@ -18,15 +18,21 @@ impl TopVulnGraph {
         conn: &mut SqliteConnection,
         dir: &Path,
         limit: usize,
+        scanner: Option<i32>,
     ) -> Result<PathBuf, Box<dyn Error>> {
-        let names: Vec<Option<String>> = nessus_items
+        let mut query = nessus_items
             .select(plugin_name)
             .filter(
                 plugin_name
                     .is_not_null()
                     .and(rollup_finding.ne(true).or(rollup_finding.is_null())),
             )
-            .load(conn)?;
+            .into_boxed();
+        if let Some(sid) = scanner {
+            use crate::schema::nessus_items::dsl::scanner_id as sid_col;
+            query = query.filter(sid_col.eq(sid));
+        }
+        let names: Vec<Option<String>> = query.load(conn)?;
 
         let mut counts: HashMap<String, i32> = HashMap::new();
         for name in names.into_iter().flatten() {

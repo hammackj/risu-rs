@@ -49,6 +49,7 @@ pub fn parse<B: BufRead>(reader: &mut Reader<B>) -> Result<NessusReport, Error> 
         }
     }
 
+    report.set_scanner("Nexpose", None);
     Ok(report)
 }
 
@@ -68,5 +69,6 @@ fn empty_host() -> Host {
         risk_score: None,
         user_id: None,
         engagement_id: None,
+        scanner_id: None,
     }
 }

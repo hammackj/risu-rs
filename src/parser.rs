@@ -21,7 +21,7 @@ use tracing::{debug, info};
 
 use crate::models::{
     Attachment, FamilySelection, Host, HostProperty, Item, Patch, Plugin, PluginPreference, Policy,
-    PolicyPlugin, Reference, Report, ServerPreference, ServiceDescription,
+    PolicyPlugin, Reference, Report, Scanner, ServerPreference, ServiceDescription,
 };
 use base64::{engine::general_purpose, Engine};
 use chrono::NaiveDateTime;
@@ -150,6 +150,7 @@ pub struct NessusReport {
     pub family_selections: Vec<FamilySelection>,
     pub plugin_preferences: Vec<PluginPreference>,
     pub server_preferences: Vec<ServerPreference>,
+    pub scanner: Scanner,
     pub filters: Filters,
 }
 
@@ -178,6 +179,22 @@ impl NessusReport {
     /// Static description of Nessus severity ratings.
     pub fn scanner_nessus_ratings_text(&self) -> &'static str {
         self.report.scanner_nessus_ratings_text()
+    }
+
+    /// Set scanner information and propagate its id to contained models.
+    pub fn set_scanner(&mut self, scanner_type: &str, version: Option<String>) {
+        self.scanner.scanner_type = scanner_type.to_string();
+        self.scanner.scanner_version = version;
+        let id = self.scanner.id;
+        for h in &mut self.hosts {
+            h.scanner_id = Some(id);
+        }
+        for i in &mut self.items {
+            i.scanner_id = Some(id);
+        }
+        for p in &mut self.plugins {
+            p.scanner_id = Some(id);
+        }
     }
 }
 
@@ -213,7 +230,7 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
             match root.as_deref() {
                 Some("NeXposeSimpleXML") => nexpose::nexpose_document::parse_file(path),
                 Some("nmaprun") => nmap::parse_file(path),
-                Some("NessusClientData_v2") => parse_nessus(path),
+                Some("NessusClientData_v2") => parse_nessus(path, "Nessus"),
                 Some("openvas-report") | Some("openvas") => openvas::parse_file(path),
                 Some("SecurityCenter") | Some("security_center") => {
                     security_center::parse_file(path)
@@ -236,7 +253,9 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
 
 /// Parse a Nessus SQLite database export.
 pub fn parse_nessus_sqlite(path: &Path) -> Result<NessusReport, crate::error::Error> {
-    nessus_sqlite::parse_file(path)
+    let mut report = nessus_sqlite::parse_file(path)?;
+    report.set_scanner("Nessus", Some(report.version.clone()));
+    Ok(report)
 }
 
 fn root_element_name(path: &Path) -> Result<Option<String>, crate::error::Error> {
@@ -439,8 +458,8 @@ pub fn apply_severity_overrides(report: &mut NessusReport, overrides: &HashMap<i
     }
 }
 
-/// Validate and parse a Nessus XML file into ORM models.
-fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
+/// Validate and parse a Nessus-style XML file into ORM models.
+fn parse_nessus(path: &Path, scanner_name: &str) -> Result<NessusReport, crate::error::Error> {
     info!("Parsing file: {}", path.display());
 
     let mut reader = Reader::from_file(path)?;
@@ -1145,6 +1164,7 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
         debug!("Unknown XML attributes encountered: {:?}", unknown_attrs);
     }
 
+    report.set_scanner(scanner_name, Some(report.version.clone()));
     Ok(report)
 }
 
@@ -1458,6 +1478,7 @@ fn empty_host() -> Host {
         risk_score: None,
         user_id: None,
         engagement_id: None,
+        scanner_id: None,
     }
 }
 
@@ -1494,6 +1515,7 @@ fn empty_item() -> Item {
         user_id: None,
         engagement_id: None,
         rollup_finding: Some(false),
+        scanner_id: None,
     }
 }
 
@@ -1545,6 +1567,7 @@ fn empty_plugin() -> Plugin {
         user_id: None,
         engagement_id: None,
         policy_id: None,
+        scanner_id: None,
     }
 }
 

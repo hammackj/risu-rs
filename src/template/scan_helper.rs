@@ -102,7 +102,7 @@ pub fn filter_summary(report: &NessusReport) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Host, Item, Report};
+    use crate::models::{Host, Item, Report, Scanner};
 
     fn sample_report() -> NessusReport {
         NessusReport {
@@ -123,6 +123,7 @@ mod tests {
                 risk_score: None,
                 user_id: None,
                 engagement_id: None,
+                scanner_id: None,
             }],
             items: vec![Item {
                 id: 1,
@@ -140,6 +141,7 @@ mod tests {
             plugin_preferences: Vec::new(),
             server_preferences: Vec::new(),
             filters: Default::default(),
+            scanner: Scanner::default(),
         }
     }
 

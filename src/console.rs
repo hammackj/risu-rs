@@ -24,7 +24,7 @@ pub fn run(config_path: &Path) -> Result<(), error::Error> {
                     break;
                 }
                 if input.eq_ignore_ascii_case("hosts") {
-                    match models::Host::ip_list(&mut dconn) {
+                    match models::Host::ip_list(&mut dconn, None) {
                         Ok(list) => println!("{list}"),
                         Err(e) => println!("{e}"),
                     }

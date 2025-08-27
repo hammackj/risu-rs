@@ -72,6 +72,7 @@ mod tests {
             risk_score: None,
             user_id: None,
             engagement_id: None,
+            scanner_id: None,
         }
     }
 
@@ -108,6 +109,7 @@ mod tests {
             user_id: None,
             engagement_id: None,
             rollup_finding: Some(false),
+            scanner_id: None,
         }
     }
 

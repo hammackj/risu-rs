@@ -84,6 +84,7 @@ mod tests {
             risk_score: None,
             user_id: None,
             engagement_id: None,
+            scanner_id: None,
         }
     }
 

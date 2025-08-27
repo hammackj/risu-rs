@@ -19,6 +19,7 @@ fn host(name: &str, ip: Option<&str>) -> Host {
         risk_score: None,
         user_id: None,
         engagement_id: None,
+        scanner_id: None,
     }
 }
 

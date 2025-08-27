@@ -17,6 +17,7 @@ pub mod reference;
 pub mod report;
 pub mod server_preference;
 pub mod service_description;
+pub mod scanner;
 pub mod version;
 
 pub use attachment::Attachment;
@@ -31,6 +32,7 @@ pub use reference::Reference;
 pub use report::Report;
 pub use server_preference::ServerPreference;
 pub use service_description::ServiceDescription;
+pub use scanner::Scanner;
 
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
@@ -56,6 +58,7 @@ pub struct Host {
     pub risk_score: Option<i32>,
     pub user_id: Option<i32>,
     pub engagement_id: Option<i32>,
+    pub scanner_id: Option<i32>,
 }
 
 #[derive(Debug, Queryable, Identifiable)]
@@ -107,6 +110,7 @@ pub struct Plugin {
     pub user_id: Option<i32>,
     pub engagement_id: Option<i32>,
     pub policy_id: Option<i32>,
+    pub scanner_id: Option<i32>,
 }
 
 #[derive(Debug, Queryable, Identifiable, Associations)]
@@ -183,17 +187,22 @@ impl Default for Plugin {
             user_id: None,
             engagement_id: None,
             policy_id: None,
+            scanner_id: None,
         }
     }
 }
 
 impl Host {
-    pub fn sorted(conn: &mut SqliteConnection) -> QueryResult<Vec<Host>> {
+    pub fn sorted(
+        conn: &mut SqliteConnection,
+        scanner: Option<i32>,
+    ) -> QueryResult<Vec<Host>> {
         use crate::schema::nessus_hosts::dsl::*;
-        let mut results = nessus_hosts
-            .filter(ip.is_not_null())
-            .order(ip.asc())
-            .load::<Host>(conn)?;
+        let mut query = nessus_hosts.filter(ip.is_not_null()).into_boxed();
+        if let Some(sid) = scanner {
+            query = query.filter(scanner_id.eq(sid));
+        }
+        let mut results = query.order(ip.asc()).load::<Host>(conn)?;
         results.sort_by(|a, b| {
             let ia = a.ip.as_ref().and_then(|s| s.parse::<IpAddr>().ok());
             let ib = b.ip.as_ref().and_then(|s| s.parse::<IpAddr>().ok());
@@ -202,8 +211,8 @@ impl Host {
         Ok(results)
     }
 
-    pub fn ip_list(conn: &mut SqliteConnection) -> QueryResult<String> {
-        let hosts = Host::sorted(conn)?;
+    pub fn ip_list(conn: &mut SqliteConnection, scanner: Option<i32>) -> QueryResult<String> {
+        let hosts = Host::sorted(conn, scanner)?;
         Ok(hosts
             .into_iter()
             .filter_map(|h| h.ip)
@@ -224,6 +233,7 @@ mod tests {
     #[diesel(table_name = nessus_hosts)]
     struct NewHost<'a> {
         ip: Option<&'a str>,
+        scanner_id: Option<i32>,
     }
 
     fn setup() -> SqliteConnection {
@@ -239,15 +249,17 @@ mod tests {
             .values(&[
                 NewHost {
                     ip: Some("10.0.0.2"),
+                    scanner_id: None,
                 },
                 NewHost {
                     ip: Some("10.0.0.1"),
+                    scanner_id: None,
                 },
             ])
             .execute(&mut conn)
             .unwrap();
 
-        let list = Host::ip_list(&mut conn).unwrap();
+        let list = Host::ip_list(&mut conn, None).unwrap();
         assert_eq!(list, "10.0.0.1\n10.0.0.2");
     }
 }

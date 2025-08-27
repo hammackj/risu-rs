@@ -5,7 +5,7 @@ use csv::Reader;
 use serde::Deserialize;
 
 use crate::error::Error;
-use crate::models::{Host, Item, Plugin, Report, ServiceDescription};
+use crate::models::{Host, Item, Plugin, Report, Scanner, ServiceDescription};
 
 /// Parsed representation of a simplified Nexpose CSV export.
 #[derive(Default)]
@@ -68,7 +68,7 @@ pub fn parse_file(path: &Path) -> Result<SimpleNexpose, Error> {
 
 impl From<SimpleNexpose> for super::NessusReport {
     fn from(s: SimpleNexpose) -> Self {
-        super::NessusReport {
+        let mut r = super::NessusReport {
             report: Report::default(),
             version: "nexpose-simple".to_string(),
             hosts: s.hosts,
@@ -84,8 +84,11 @@ impl From<SimpleNexpose> for super::NessusReport {
             family_selections: Vec::new(),
             plugin_preferences: Vec::new(),
             server_preferences: Vec::new(),
+            scanner: Scanner::default(),
             filters: super::Filters::default(),
-        }
+        };
+        r.set_scanner("Nexpose", None);
+        r
     }
 }
 
@@ -105,6 +108,7 @@ fn empty_host() -> Host {
         risk_score: None,
         user_id: None,
         engagement_id: None,
+        scanner_id: None,
     }
 }
 

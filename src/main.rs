@@ -327,7 +327,7 @@ fn run() -> Result<(), error::Error> {
         use crate::schema::nessus_hosts::dsl::{ip, nessus_hosts};
 
         let mut conn = SqliteConnection::establish(&cfg.database_url)?;
-        let items = models::Item::search_plugin_output(&mut conn, keyword)?;
+        let items = models::Item::search_plugin_output(&mut conn, keyword, None)?;
         for item in items {
             let host = item
                 .host_id

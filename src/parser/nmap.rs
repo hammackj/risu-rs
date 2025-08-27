@@ -114,6 +114,7 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, Error> {
         buf.clear();
     }
 
+    report.set_scanner("Nmap", None);
     Ok(report)
 }
 
@@ -133,5 +134,6 @@ fn empty_host() -> Host {
         risk_score: None,
         user_id: None,
         engagement_id: None,
+        scanner_id: None,
     }
 }

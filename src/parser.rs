@@ -634,6 +634,7 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                 | b"cm:in-the-news"
                 | b"cm:exploited-by-nessus"
                 | b"cm:unsupported-by-vendor"
+                | b"plugin_type"
                 | b"cm:default-account" => {
                     if current_item_index.is_some() {
                         current_item_tag =
@@ -725,6 +726,19 @@ fn parse_nessus(path: &Path) -> Result<NessusReport, crate::error::Error> {
                                                 if plugin.cvss_base_score.is_none() {
                                                     plugin.cvss_base_score = Some(score);
                                                 }
+                                            }
+                                        }
+                                    }
+                                }
+                                "plugin_type" => {
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.plugin_type.is_none() {
+                                                plugin.plugin_type = Some(text.clone());
                                             }
                                         }
                                     }

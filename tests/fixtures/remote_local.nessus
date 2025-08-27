@@ -1,0 +1,15 @@
+<NessusClientData_v2>
+  <ReportHost name="h">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="19506" severity="0" pluginName="Nessus Scan Information">
+      <plugin_output>Credentialed checks : yes</plugin_output>
+      <plugin_type>remote</plugin_type>
+    </ReportItem>
+    <ReportItem pluginID="1" severity="0" pluginName="Remote Plugin">
+      <plugin_type>remote</plugin_type>
+    </ReportItem>
+    <ReportItem pluginID="2" severity="0" pluginName="Local Plugin">
+      <plugin_type>local</plugin_type>
+    </ReportItem>
+  </ReportHost>
+</NessusClientData_v2>

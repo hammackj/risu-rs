@@ -401,3 +401,13 @@ fn service_inventory_template_lists_services() {
         "ssh,22,SSH-2.0-OpenSSH_7.2p2 Ubuntu-4ubuntu2.8",
     );
 }
+
+#[test]
+fn unsupported_os_template_lists_hosts() {
+    let out = render_template_capture_raw_fixture(
+        "unsupported_os",
+        "tests/fixtures/unsupported_os.nessus",
+    );
+    assert!(out.contains("winhost"));
+    assert!(out.contains("linuxhost"));
+}

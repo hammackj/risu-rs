@@ -318,6 +318,7 @@ fn run() -> Result<(), error::Error> {
         manager.register(Box::new(templates::MissingRootCausesTemplate));
         manager.register(Box::new(templates::MSWSUSFindingsTemplate));
         manager.register(Box::new(templates::ServiceInventoryTemplate));
+        manager.register(Box::new(templates::UnsupportedOsTemplate));
         manager.load_templates().map_err(error::Error::Template)?;
         manager.display();
         return Ok(());
@@ -450,6 +451,7 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::MissingRootCausesTemplate));
             manager.register(Box::new(templates::MSWSUSFindingsTemplate));
             manager.register(Box::new(templates::ServiceInventoryTemplate));
+            manager.register(Box::new(templates::UnsupportedOsTemplate));
             manager.load_templates().map_err(error::Error::Template)?;
             let mut template_args_map: HashMap<String, String> = cfg
                 .template_settings

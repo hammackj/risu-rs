@@ -3,6 +3,7 @@ use crate::{
     models::{Host, host::UNSUPPORTED_WINDOWS_PLUGINS},
     parser::NessusReport,
 };
+use std::collections::BTreeMap;
 
 /// Format the host name as a heading using existing helpers.
 pub fn host_heading(host: &Host) -> String {
@@ -59,6 +60,33 @@ pub fn unsupported_os_windows(report: &NessusReport) -> String {
     out
 }
 
+/// Enumerate hosts running unsupported Linux versions via host properties.
+pub fn unsupported_os_linux(report: &NessusReport) -> String {
+    let mut by_os: BTreeMap<String, Vec<String>> = BTreeMap::new();
+
+    for prop in &report.host_properties {
+        if prop.name.as_deref() == Some("operating-system-unsupported") {
+            if let (Some(os), Some(hid)) = (prop.value.clone(), prop.host_id) {
+                if let Some(host) = report.hosts.get(hid as usize) {
+                    by_os.entry(os).or_default().push(host_label(host));
+                }
+            }
+        }
+    }
+
+    let mut out = String::new();
+    for (os, hosts) in by_os {
+        out.push_str(&helpers::heading2(&format!(
+            "Unsupported {os} Installations"
+        )));
+        out.push('\n');
+        out.push_str(&template_helper::bullet_list(hosts));
+        out.push('\n');
+        out.push('\n');
+    }
+    out
+}
+
 /// Appendix section listing unsupported operating systems.
 pub fn unsupported_os_appendix_section(report: &NessusReport) -> String {
     unsupported_os_windows(report)
@@ -67,7 +95,7 @@ pub fn unsupported_os_appendix_section(report: &NessusReport) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Item, Scanner};
+    use crate::models::{HostProperty, Item, Scanner};
 
     fn sample_host() -> Host {
         Host {
@@ -162,6 +190,42 @@ mod tests {
 
         let out = unsupported_os_windows(&report);
         assert!(out.contains("Unsupported Windows XP Installations"));
+        assert!(out.contains("srv (1.1.1.1)"));
+    }
+
+    #[test]
+    fn unsupported_os_linux_lists_host() {
+        let host = sample_host();
+        let prop = HostProperty {
+            id: 1,
+            host_id: Some(0),
+            name: Some("operating-system-unsupported".into()),
+            value: Some("Ubuntu 10.04".into()),
+            user_id: None,
+            engagement_id: None,
+        };
+        let report = NessusReport {
+            report: crate::models::Report::default(),
+            version: String::new(),
+            hosts: vec![host],
+            items: Vec::new(),
+            plugins: Vec::new(),
+            patches: Vec::new(),
+            attachments: Vec::new(),
+            host_properties: vec![prop],
+            service_descriptions: Vec::new(),
+            references: Vec::new(),
+            policies: Vec::new(),
+            policy_plugins: Vec::new(),
+            family_selections: Vec::new(),
+            plugin_preferences: Vec::new(),
+            server_preferences: Vec::new(),
+            filters: crate::parser::Filters::default(),
+            scanner: Scanner::default(),
+        };
+
+        let out = unsupported_os_linux(&report);
+        assert!(out.contains("Unsupported Ubuntu 10.04 Installations"));
         assert!(out.contains("srv (1.1.1.1)"));
     }
 }

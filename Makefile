@@ -50,13 +50,13 @@ test-sqlite:
 # Usage: make test-postgres DATABASE_URL=postgres://...
 test-postgres:
 	@test -n "$(DATABASE_URL)" || (echo "Set DATABASE_URL=postgres://..." && exit 1)
-	cargo test --no-default-features --features postgres
+	cargo test --features postgres
 
 ## Run tests against the MySQL backend
 # Usage: make test-mysql DATABASE_URL=mysql://...
 test-mysql:
 	@test -n "$(DATABASE_URL)" || (echo "Set DATABASE_URL=mysql://..." && exit 1)
-	cargo test --no-default-features --features mysql
+	cargo test --features mysql
 
 ## Send a release notification to a webhook (e.g. Slack)
 # Usage: make notify VERSION=x.y.z WEBHOOK=https://example.com/hook

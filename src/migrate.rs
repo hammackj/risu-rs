@@ -1,29 +1,65 @@
 use diesel::migration::MigrationSource;
 use diesel::prelude::*;
-use diesel::sqlite::SqliteConnection;
-use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use tracing::info;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
-/// Perform database migrations
-pub fn run(create_tables: bool, drop_tables: bool) -> Result<(), crate::error::Error> {
-    let database_url = "risu.db";
-    let mut conn = SqliteConnection::establish(database_url)?;
+pub fn run(
+    database_url: &str,
+    backend: &str,
+    create_tables: bool,
+    drop_tables: bool,
+) -> Result<(), crate::error::Error> {
+    match backend {
+        "postgres" => {
+            #[cfg(feature = "postgres")]
+            {
+                let mut conn = diesel::pg::PgConnection::establish(database_url)?;
+                execute_migrations(&mut conn, create_tables, drop_tables)
+            }
+            #[cfg(not(feature = "postgres"))]
+            {
+                Err(crate::error::Error::Migration("postgres feature not enabled".into()))
+            }
+        }
+        "mysql" => {
+            #[cfg(feature = "mysql")]
+            {
+                let mut conn = diesel::mysql::MysqlConnection::establish(database_url)?;
+                execute_migrations(&mut conn, create_tables, drop_tables)
+            }
+            #[cfg(not(feature = "mysql"))]
+            {
+                Err(crate::error::Error::Migration("mysql feature not enabled".into()))
+            }
+        }
+        _ => {
+            #[cfg(feature = "sqlite")]
+            {
+                let mut conn = diesel::sqlite::SqliteConnection::establish(database_url)?;
+                execute_migrations(&mut conn, create_tables, drop_tables)
+            }
+            #[cfg(not(feature = "sqlite"))]
+            {
+                Err(crate::error::Error::Migration("sqlite feature not enabled".into()))
+            }
+        }
+    }
+}
 
+fn execute_migrations<DB, C>(
+    conn: &mut C,
+    create_tables: bool,
+    drop_tables: bool,
+) -> Result<(), crate::error::Error>
+where
+    DB: diesel::backend::Backend,
+    C: MigrationHarness<DB> + diesel::Connection<Backend = DB>,
+{
     if create_tables {
         conn.run_pending_migrations(MIGRATIONS)
             .map_err(crate::error::Error::Migration)?;
-
-        use crate::models::version::NewVersion;
-        use crate::schema::versions::dsl::versions as versions_table;
-        use diesel::dsl::insert_into;
-        let new_ver = NewVersion {
-            version: env!("CARGO_PKG_VERSION"),
-        };
-        let _ = insert_into(versions_table)
-            .values(&new_ver)
-            .execute(&mut conn);
     }
 
     if drop_tables {

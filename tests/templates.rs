@@ -281,9 +281,7 @@ fn host_summary_template_renders() {
 fn exec_summary_template_includes_risk_score() {
     let rust_out = render_template_capture_raw("exec_summary");
     assert!(rust_out.contains("Risk Score:"));
-    assert!(rust_out.contains(
-        "Risk scores derived from weighted averages of finding severities",
-    ));
+    assert!(rust_out.contains("Risk scores derived from weighted averages of finding severities",));
 }
 
 #[test]
@@ -393,4 +391,13 @@ fn missing_root_causes_template_renders() {
 #[test]
 fn ms_wsus_findings_template_renders() {
     run_template("ms_wsus_findings", "Patch Management: WSUS Report");
+}
+
+#[test]
+fn service_inventory_template_lists_services() {
+    run_template_fixture(
+        "service_inventory",
+        "tests/fixtures/service_inventory.nessus",
+        "ssh,22,SSH-2.0-OpenSSH_7.2p2 Ubuntu-4ubuntu2.8",
+    );
 }

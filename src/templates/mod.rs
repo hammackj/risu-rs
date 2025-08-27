@@ -31,6 +31,7 @@ pub mod talking_points;
 pub mod technical_findings;
 pub mod template;
 pub mod top_25;
+pub mod unsupported_software;
 
 pub use assets::AssetsTemplate;
 pub use authentication_summary::AuthenticationSummaryTemplate;
@@ -65,3 +66,4 @@ pub use talking_points::TalkingPointsTemplate;
 pub use technical_findings::TechnicalFindingsTemplate;
 pub use template::TemplateTemplate;
 pub use top_25::Top25Template;
+pub use unsupported_software::UnsupportedSoftwareTemplate;

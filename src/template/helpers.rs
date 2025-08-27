@@ -7,7 +7,7 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 
 use crate::graphs::{TopVulnGraph, WindowsOsGraph};
-use crate::models::{Attachment, FamilySelection, HostProperty, PolicyPlugin};
+use crate::models::{Attachment, FamilySelection, Host, HostProperty, Item, PolicyPlugin};
 use crate::renderer::Renderer;
 
 /// Produce a message indicating the operating system is unsupported.
@@ -74,13 +74,26 @@ pub fn attachment_path(att: &Attachment) -> Option<&str> {
 }
 
 /// Plugins that indicate default credentials were accepted.
-pub static DEFAULT_CREDENTIAL_PLUGINS: &[i32] = &[
-    1000, 2000, 3000,
-];
+pub static DEFAULT_CREDENTIAL_PLUGINS: &[i32] = &[1000, 2000, 3000];
+
+/// Plugins that indicate unsupported software is installed.
+#[allow(non_upper_case_globals)]
+pub static unsupported_software_plugins: &[i32] = &[55786];
 
 /// Determine if the given plugin ID indicates default credentials.
 pub fn has_default_credentials(plugin_id: i32) -> bool {
     DEFAULT_CREDENTIAL_PLUGINS.contains(&plugin_id)
+}
+
+/// Determine if the given host has unsupported software findings.
+pub fn has_unsupported_software(host: &Host, items: &[Item]) -> bool {
+    items.iter().any(|it| {
+        it.host_id == Some(host.id)
+            && it
+                .plugin_id
+                .map(|pid| unsupported_software_plugins.contains(&pid))
+                .unwrap_or(false)
+    })
 }
 
 /// Generate a warning section when default credential plugins are present.
@@ -248,6 +261,99 @@ mod tests {
     fn detects_default_credential_plugins() {
         assert!(has_default_credentials(1000));
         assert!(!has_default_credentials(42));
+    }
+
+    #[test]
+    fn detects_unsupported_software() {
+        use crate::models::{Host, Item};
+
+        let host = Host {
+            id: 1,
+            nessus_report_id: None,
+            name: Some("srv".into()),
+            os: None,
+            mac: None,
+            start: None,
+            end: None,
+            ip: Some("1.1.1.1".into()),
+            fqdn: None,
+            netbios: None,
+            notes: None,
+            risk_score: None,
+            user_id: None,
+            engagement_id: None,
+        };
+
+        let item = Item {
+            id: 1,
+            host_id: Some(1),
+            plugin_id: Some(55786),
+            attachment_id: None,
+            plugin_output: None,
+            port: None,
+            svc_name: None,
+            protocol: None,
+            severity: None,
+            plugin_name: None,
+            description: None,
+            solution: None,
+            risk_factor: None,
+            cvss_base_score: None,
+            verified: None,
+            cm_compliance_info: None,
+            cm_compliance_actual_value: None,
+            cm_compliance_check_id: None,
+            cm_compliance_policy_value: None,
+            cm_compliance_audit_file: None,
+            cm_compliance_check_name: None,
+            cm_compliance_result: None,
+            cm_compliance_output: None,
+            cm_compliance_reference: None,
+            cm_compliance_see_also: None,
+            cm_compliance_solution: None,
+            real_severity: None,
+            risk_score: None,
+            user_id: None,
+            engagement_id: None,
+            rollup_finding: Some(false),
+        };
+
+        assert!(has_unsupported_software(&host, &[item]));
+
+        let clean = Item {
+            id: 2,
+            host_id: Some(1),
+            plugin_id: Some(1),
+            attachment_id: None,
+            plugin_output: None,
+            port: None,
+            svc_name: None,
+            protocol: None,
+            severity: None,
+            plugin_name: None,
+            description: None,
+            solution: None,
+            risk_factor: None,
+            cvss_base_score: None,
+            verified: None,
+            cm_compliance_info: None,
+            cm_compliance_actual_value: None,
+            cm_compliance_check_id: None,
+            cm_compliance_policy_value: None,
+            cm_compliance_audit_file: None,
+            cm_compliance_check_name: None,
+            cm_compliance_result: None,
+            cm_compliance_output: None,
+            cm_compliance_reference: None,
+            cm_compliance_see_also: None,
+            cm_compliance_solution: None,
+            real_severity: None,
+            risk_score: None,
+            user_id: None,
+            engagement_id: None,
+            rollup_finding: Some(false),
+        };
+        assert!(!has_unsupported_software(&host, &[clean]));
     }
 
     #[test]
@@ -428,7 +534,9 @@ mod tests {
     fn host_netbios_helper() {
         let mut conn = setup();
         diesel::insert_into(nessus_hosts::table)
-            .values(&NewHost { ip: Some("10.0.0.1"), })
+            .values(&NewHost {
+                ip: Some("10.0.0.1"),
+            })
             .execute(&mut conn)
             .unwrap();
         diesel::insert_into(nessus_host_properties::table)

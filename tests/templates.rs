@@ -225,7 +225,7 @@ fn notable_template_includes_high_severity_findings() {
 
 #[test]
 fn ms_update_summary_template_renders() {
-    run_template("ms_update_summary", "Missing Microsoft Updates");
+    run_template("ms_update_summary", "Patches: 1");
 }
 
 #[test]
@@ -434,6 +434,11 @@ fn missing_root_causes_template_renders() {
 #[test]
 fn ms_wsus_findings_template_renders() {
     run_template("ms_wsus_findings", "Patch Management: WSUS Report");
+}
+
+#[test]
+fn ms_patch_summary_template_renders() {
+    run_template("ms_patch_summary", "Patch: MS12-001");
 }
 
 #[test]

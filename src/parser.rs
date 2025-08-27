@@ -15,15 +15,15 @@ use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 
 use ipnet::IpNet;
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 use tracing::{debug, info};
 
 use crate::models::{
     Attachment, FamilySelection, Host, HostProperty, Item, Patch, Plugin, PluginPreference, Policy,
     PolicyPlugin, Reference, Report, Scanner, ServerPreference, ServiceDescription,
 };
-use base64::{engine::general_purpose, Engine};
+use base64::{Engine, engine::general_purpose};
 use chrono::NaiveDateTime;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -471,6 +471,7 @@ fn parse_nessus(path: &Path, scanner_name: &str) -> Result<NessusReport, crate::
     let mut current_host: Option<Host> = None;
     let mut current_tag: Option<String> = None;
     let mut current_patches: Vec<Patch> = Vec::new();
+    let mut current_patch: Option<Patch> = None;
     let mut current_host_properties: Vec<HostProperty> = Vec::new();
     let mut current_service_descriptions: Vec<ServiceDescription> = Vec::new();
     let mut pending_service_description: Option<ServiceDescription> = None;
@@ -547,6 +548,31 @@ fn parse_nessus(path: &Path, scanner_name: &str) -> Result<NessusReport, crate::
                 }
                 b"HostProperties" => {
                     // nothing to do, tags will follow
+                }
+                b"patches" => {
+                    // container for patch entries
+                }
+                b"patch" => {
+                    if current_host.is_some() {
+                        let mut patch = empty_patch();
+                        for a in e.attributes().flatten() {
+                            match a.key.as_ref() {
+                                b"name" => {
+                                    patch.name = Some(a.unescape_value()?.to_string());
+                                }
+                                b"value" | b"kb" | b"id" | b"version" => {
+                                    patch.value = Some(a.unescape_value()?.to_string());
+                                }
+                                _ => {
+                                    unknown_attrs.insert(format!(
+                                        "patch {}",
+                                        String::from_utf8_lossy(a.key.as_ref())
+                                    ));
+                                }
+                            }
+                        }
+                        current_patch = Some(patch);
+                    }
                 }
                 b"tag" => {
                     for a in e.attributes().flatten() {
@@ -724,8 +750,41 @@ fn parse_nessus(path: &Path, scanner_name: &str) -> Result<NessusReport, crate::
                     }
                 }
             },
+            Event::Empty(e) => match e.name().as_ref() {
+                b"patch" => {
+                    if current_host.is_some() {
+                        let mut patch = empty_patch();
+                        for a in e.attributes().flatten() {
+                            match a.key.as_ref() {
+                                b"name" => {
+                                    patch.name = Some(a.unescape_value()?.to_string());
+                                }
+                                b"value" | b"kb" | b"id" | b"version" => {
+                                    patch.value = Some(a.unescape_value()?.to_string());
+                                }
+                                _ => {
+                                    unknown_attrs.insert(format!(
+                                        "patch {}",
+                                        String::from_utf8_lossy(a.key.as_ref())
+                                    ));
+                                }
+                            }
+                        }
+                        current_patches.push(patch);
+                    }
+                }
+                b"patches" => {}
+                _ => {
+                    let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                    unknown_elements.insert(name);
+                }
+            },
             Event::Text(e) => {
-                if let Some(r) = &mut current_reference {
+                if let Some(p) = &mut current_patch {
+                    if p.value.is_none() {
+                        p.value = Some(e.unescape()?.into_owned());
+                    }
+                } else if let Some(r) = &mut current_reference {
                     r.value.push_str(&e.unescape()?.into_owned());
                 } else if let Some(att) = &mut current_attachment {
                     att.data.push_str(&e.unescape()?.into_owned());
@@ -1023,6 +1082,12 @@ fn parse_nessus(path: &Path, scanner_name: &str) -> Result<NessusReport, crate::
                 }
             }
             Event::End(e) => match e.name().as_ref() {
+                b"patch" => {
+                    if let Some(p) = current_patch.take() {
+                        current_patches.push(p);
+                    }
+                }
+                b"patches" => {}
                 b"tag" => {
                     current_tag = None;
                 }
@@ -1318,20 +1383,21 @@ mod tests {
         assert_eq!(report.patches.len(), 1);
         assert_eq!(report.patches[0].name.as_deref(), Some("MS12-001"));
         assert_eq!(report.patches[0].value.as_deref(), Some("KB123456"));
-        assert_eq!(report.host_properties.len(), 13);
-        assert!(report
-            .host_properties
-            .iter()
-            .any(|p| p.name.as_deref() == Some("host-ip")
-                && p.value.as_deref() == Some("192.168.0.1")));
-        assert!(report
-            .host_properties
-            .iter()
-            .any(|p| p.name.as_deref() == Some("operating-system")
-                && p.value.as_deref() == Some("Linux")));
-        assert!(report.host_properties.iter().any(
-            |p| p.name.as_deref() == Some("MS12-001") && p.value.as_deref() == Some("KB123456")
-        ));
+        assert_eq!(report.host_properties.len(), 12);
+        assert!(
+            report
+                .host_properties
+                .iter()
+                .any(|p| p.name.as_deref() == Some("host-ip")
+                    && p.value.as_deref() == Some("192.168.0.1"))
+        );
+        assert!(
+            report
+                .host_properties
+                .iter()
+                .any(|p| p.name.as_deref() == Some("operating-system")
+                    && p.value.as_deref() == Some("Linux"))
+        );
     }
 
     #[test]
@@ -1406,24 +1472,32 @@ mod tests {
         std::fs::write(&file_path, xml).unwrap();
         let report = parse_file(&file_path).expect("parse");
         assert_eq!(report.references.len(), 5);
-        assert!(report
-            .references
-            .iter()
-            .any(|r| r.source.as_deref() == Some("CVE")
-                && r.value.as_deref() == Some("CVE-2023-1111")));
-        assert!(report
-            .references
-            .iter()
-            .any(|r| r.source.as_deref() == Some("BID") && r.value.as_deref() == Some("BID-7654")));
-        assert!(report
-            .references
-            .iter()
-            .any(|r| r.source.as_deref() == Some("CVE")
-                && r.value.as_deref() == Some("CVE-2023-2222")));
-        assert!(report
-            .references
-            .iter()
-            .any(|r| r.source.as_deref() == Some("OSVDB") && r.value.as_deref() == Some("12345")));
+        assert!(
+            report
+                .references
+                .iter()
+                .any(|r| r.source.as_deref() == Some("CVE")
+                    && r.value.as_deref() == Some("CVE-2023-1111"))
+        );
+        assert!(
+            report
+                .references
+                .iter()
+                .any(|r| r.source.as_deref() == Some("BID")
+                    && r.value.as_deref() == Some("BID-7654"))
+        );
+        assert!(
+            report
+                .references
+                .iter()
+                .any(|r| r.source.as_deref() == Some("CVE")
+                    && r.value.as_deref() == Some("CVE-2023-2222"))
+        );
+        assert!(
+            report.references.iter().any(
+                |r| r.source.as_deref() == Some("OSVDB") && r.value.as_deref() == Some("12345")
+            )
+        );
         assert!(
             report
                 .references

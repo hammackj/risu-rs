@@ -26,7 +26,7 @@ impl Template for MSPatchSummaryTemplate {
         renderer.text(title)?;
         for patch in &report.patches {
             if let Some(host_id) = patch.host_id {
-                if let Some(host) = report.hosts.get(host_id as usize) {
+                if let Some(host) = report.hosts.iter().find(|h| h.id == host_id) {
                     if let Some(name) = &host.name {
                         renderer.text(&format!("Host: {name}"))?;
                     }

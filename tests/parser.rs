@@ -161,6 +161,23 @@ fn maps_pluginid_zero_to_one() {
 }
 
 #[test]
+fn parses_multiple_hosts_and_plugins() {
+    let path = fs::canonicalize("tests/fixtures/multi_host.nessus").unwrap();
+    let report = parse_file(&path).unwrap();
+
+    assert_eq!(report.hosts.len(), 2);
+    assert_eq!(report.items.len(), 4);
+
+    let ids: std::collections::HashSet<i32> = report
+        .items
+        .iter()
+        .filter_map(|i| i.plugin_id)
+        .collect();
+    assert!(ids.contains(&1));
+    assert!(ids.contains(&2));
+}
+
+#[test]
 fn parses_policy_block() {
     let path = fs::canonicalize("tests/fixtures/policy.nessus").unwrap();
     let report = parse_file(&path).unwrap();

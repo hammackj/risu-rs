@@ -389,6 +389,7 @@ fn run() -> Result<(), error::Error> {
             let blacklist: HashSet<i32> = cli.blacklist.iter().cloned().collect();
             let whitelist: HashSet<i32> = cli.whitelist.iter().cloned().collect();
             let mut report = parser::parse_file(&file)?;
+            parser::apply_severity_overrides(&mut report, &cfg.severity_overrides);
             let filters = parser::Filters {
                 host_ip,
                 host_mac,

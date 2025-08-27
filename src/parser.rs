@@ -9,7 +9,7 @@ mod saint;
 mod security_center;
 mod simple_nexpose;
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
@@ -423,6 +423,20 @@ pub fn filter_report(
     report
         .policy_plugins
         .retain(|p| p.plugin_id.map_or(true, |pid| allowed_pids.contains(&pid)));
+}
+
+/// Override item severities based on provided plugin mappings.
+pub fn apply_severity_overrides(report: &mut NessusReport, overrides: &HashMap<i32, i32>) {
+    if overrides.is_empty() {
+        return;
+    }
+    for item in &mut report.items {
+        if let Some(pid) = item.plugin_id {
+            if let Some(&sev) = overrides.get(&pid) {
+                item.severity = Some(sev);
+            }
+        }
+    }
 }
 
 /// Validate and parse a Nessus XML file into ORM models.

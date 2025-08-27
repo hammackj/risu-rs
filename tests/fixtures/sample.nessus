@@ -13,8 +13,10 @@
       <tag name="pcidss:status">passed</tag>
       <tag name="pcidss:compliant">yes</tag>
       <tag name="unknown-prop">foo</tag>
-      <tag name="MS12-001">KB123456</tag>
     </HostProperties>
+    <patches>
+      <patch name="MS12-001" version="KB123456" />
+    </patches>
     <ReportItem pluginID="100" port="0" svc_name="" protocol="tcp" severity="0" pluginName="Test Plugin">
     </ReportItem>
     <unknown-tag></unknown-tag>

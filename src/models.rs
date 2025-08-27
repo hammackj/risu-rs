@@ -9,6 +9,7 @@ pub mod family_selection;
 pub mod host;
 pub mod host_property;
 pub mod item;
+pub mod patch;
 pub mod plugin_metadata;
 pub mod plugin_preference;
 pub mod policy;
@@ -24,6 +25,7 @@ pub use attachment::Attachment;
 pub use family_selection::FamilySelection;
 pub use host_property::HostProperty;
 pub use item::Item;
+pub use patch::Patch;
 pub use plugin_metadata::NessusPluginMetadata;
 pub use plugin_preference::PluginPreference;
 pub use policy::Policy;
@@ -38,7 +40,7 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::net::IpAddr;
 
-use crate::schema::{nessus_hosts, nessus_patches, nessus_plugins};
+use crate::schema::{nessus_hosts, nessus_plugins};
 
 #[derive(Debug, Queryable, Identifiable, Associations)]
 #[diesel(belongs_to(Report, foreign_key = nessus_report_id))]
@@ -113,31 +115,6 @@ pub struct Plugin {
     pub scanner_id: Option<i32>,
 }
 
-#[derive(Debug, Queryable, Identifiable, Associations)]
-#[diesel(belongs_to(Host, foreign_key = host_id))]
-#[diesel(table_name = nessus_patches)]
-pub struct Patch {
-    pub id: i32,
-    pub host_id: Option<i32>,
-    pub name: Option<String>,
-    pub value: Option<String>,
-    pub user_id: Option<i32>,
-    pub engagement_id: Option<i32>,
-}
-
-impl Default for Patch {
-    fn default() -> Self {
-        Self {
-            id: 0,
-            host_id: None,
-            name: None,
-            value: None,
-            user_id: None,
-            engagement_id: None,
-        }
-    }
-}
-
 impl Default for Plugin {
     fn default() -> Self {
         Self {
@@ -193,10 +170,7 @@ impl Default for Plugin {
 }
 
 impl Host {
-    pub fn sorted(
-        conn: &mut SqliteConnection,
-        scanner: Option<i32>,
-    ) -> QueryResult<Vec<Host>> {
+    pub fn sorted(conn: &mut SqliteConnection, scanner: Option<i32>) -> QueryResult<Vec<Host>> {
         use crate::schema::nessus_hosts::dsl::*;
         let mut query = nessus_hosts.filter(ip.is_not_null()).into_boxed();
         if let Some(sid) = scanner {

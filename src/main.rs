@@ -381,6 +381,7 @@ fn run() -> Result<(), error::Error> {
         manager.register(Box::new(templates::HostFindingsCsvTemplate));
         manager.register(Box::new(templates::HostFindingsCsvOlderThanTemplate));
         manager.register(Box::new(templates::Top25Template));
+        manager.register(Box::new(templates::SansTopTemplate));
         manager.register(Box::new(templates::FindingsHostTemplate));
         manager.register(Box::new(templates::FindingsSummaryTemplate));
         manager.register(Box::new(templates::FindingsSummaryWithPluginIdTemplate));
@@ -518,6 +519,7 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::HostFindingsCsvTemplate));
             manager.register(Box::new(templates::HostFindingsCsvOlderThanTemplate));
             manager.register(Box::new(templates::Top25Template));
+            manager.register(Box::new(templates::SansTopTemplate));
             manager.register(Box::new(templates::FindingsHostTemplate));
             manager.register(Box::new(templates::FindingsSummaryTemplate));
             manager.register(Box::new(templates::FindingsSummaryWithPluginIdTemplate));

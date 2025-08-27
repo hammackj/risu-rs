@@ -167,6 +167,49 @@ fn render_template_capture_raw_fixture(name: &str, fixture: &str) -> String {
 }
 
 #[test]
+fn sans_top_template_orders_and_limits() {
+    let tmp = tempdir().unwrap();
+    let sample = fs::canonicalize("tests/fixtures/sans_top.nessus").unwrap();
+
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .args(["--no-banner", "--create-config-file"])
+        .current_dir(&tmp)
+        .assert()
+        .success();
+
+    let output = tmp.path().join("out.csv");
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .current_dir(&tmp)
+        .args([
+            "--no-banner",
+            "--config-file",
+            "config.yml",
+            "parse",
+            sample.to_str().unwrap(),
+            "-o",
+            output.to_str().unwrap(),
+            "-t",
+            "sans_top",
+            "--renderer",
+            "csv",
+            "--template-arg",
+            "top=2",
+        ])
+        .assert()
+        .success();
+
+    let contents = fs::read_to_string(output).unwrap();
+    assert!(contents.contains("PluginB (2): 3"));
+    assert!(contents.contains("PluginA (1): 2"));
+    assert!(!contents.contains("PluginC"));
+    let idx_b = contents.find("PluginB").unwrap();
+    let idx_a = contents.find("PluginA").unwrap();
+    assert!(idx_b < idx_a);
+}
+
+#[test]
 fn notable_template_renders() {
     run_template("notable", "Notable Findings");
 }

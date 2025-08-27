@@ -1,0 +1,19 @@
+<NessusClientData_v2 version="2.0">
+  <ReportHost name="192.168.0.1">
+    <HostProperties>
+      <tag name="host-ip">192.168.0.1</tag>
+    </HostProperties>
+    <ReportItem pluginID="1" port="0" svc_name="" protocol="tcp" severity="0" pluginName="Plug1">
+      <description>Desc1</description>
+      <solution>Sol1</solution>
+    </ReportItem>
+    <ReportItem pluginID="2" port="0" svc_name="" protocol="tcp" severity="0" pluginName="Plug2">
+      <description>Desc2</description>
+      <solution>Sol2</solution>
+    </ReportItem>
+    <ReportItem pluginID="3" port="0" svc_name="" protocol="tcp" severity="0" pluginName="Plug3">
+      <description>Desc3</description>
+      <solution>Sol3</solution>
+    </ReportItem>
+  </ReportHost>
+</NessusClientData_v2>

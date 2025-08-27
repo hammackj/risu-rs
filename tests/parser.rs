@@ -69,11 +69,9 @@ fn parses_traceroute_pcidss_and_logs_unknown() {
         })
         .collect();
 
-    assert!(
-        props
-            .iter()
-            .any(|(n, v)| n == "netbios-name" && v == "EXAMPLE")
-    );
+    assert!(props
+        .iter()
+        .any(|(n, v)| n == "netbios-name" && v == "EXAMPLE"));
     assert!(props.iter().any(|(n, _)| n == "traceroute_hop_0"));
     assert!(props.iter().any(|(n, _)| n == "pcidss:status"));
 
@@ -200,6 +198,88 @@ fn parses_policy_block() {
 }
 
 #[test]
+fn parses_nessus_sqlite_db() {
+    use diesel::prelude::*;
+    use diesel_migrations::MigrationHarness;
+    use tempfile::tempdir;
+
+    use risu_rs::migrate::MIGRATIONS;
+    use risu_rs::parser::parse_nessus_sqlite;
+    use risu_rs::schema::{nessus_attachments, nessus_hosts, nessus_items, nessus_plugins};
+
+    let dir = tempdir().unwrap();
+    let db_path = dir.path().join("export.db");
+    let mut conn = diesel::sqlite::SqliteConnection::establish(db_path.to_str().unwrap()).unwrap();
+    conn.run_pending_migrations(MIGRATIONS).unwrap();
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_hosts)]
+    struct NewHost<'a> {
+        ip: Option<&'a str>,
+    }
+
+    diesel::insert_into(nessus_hosts::table)
+        .values(&NewHost {
+            ip: Some("1.2.3.4"),
+        })
+        .execute(&mut conn)
+        .unwrap();
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_plugins)]
+    struct NewPlugin<'a> {
+        plugin_id: Option<i32>,
+        plugin_name: Option<&'a str>,
+    }
+
+    diesel::insert_into(nessus_plugins::table)
+        .values(&NewPlugin {
+            plugin_id: Some(1),
+            plugin_name: Some("test"),
+        })
+        .execute(&mut conn)
+        .unwrap();
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_attachments)]
+    struct NewAttachment<'a> {
+        name: Option<&'a str>,
+    }
+
+    diesel::insert_into(nessus_attachments::table)
+        .values(&NewAttachment {
+            name: Some("a.txt"),
+        })
+        .execute(&mut conn)
+        .unwrap();
+
+    #[derive(Insertable)]
+    #[diesel(table_name = nessus_items)]
+    struct NewItem {
+        host_id: Option<i32>,
+        plugin_id: Option<i32>,
+        attachment_id: Option<i32>,
+    }
+
+    diesel::insert_into(nessus_items::table)
+        .values(&NewItem {
+            host_id: Some(1),
+            plugin_id: Some(1),
+            attachment_id: Some(1),
+        })
+        .execute(&mut conn)
+        .unwrap();
+
+    drop(conn);
+
+    let report = parse_nessus_sqlite(&db_path).unwrap();
+    assert_eq!(report.hosts.len(), 1);
+    assert_eq!(report.plugins.len(), 1);
+    assert_eq!(report.items.len(), 1);
+    assert_eq!(report.attachments.len(), 1);
+}
+
+#[test]
 fn recognizes_host_property_patterns() {
     let xml = r#"<NessusClientData_v2><ReportHost name='h'><HostProperties>
 <tag name='cpe-0'>cpe:/a:vendor:prod:1.0</tag>
@@ -234,12 +314,10 @@ fn recognizes_host_property_patterns() {
     assert!(names.contains(&"patch-summary-cves".to_string()));
     assert!(names.contains(&"mcafee-epo-guid".to_string()));
 
-    assert!(
-        report
-            .references
-            .iter()
-            .any(|r| r.source.as_deref() == Some("MSFT") && r.value.as_deref() == Some("MS13-001"))
-    );
+    assert!(report
+        .references
+        .iter()
+        .any(|r| r.source.as_deref() == Some("MSFT") && r.value.as_deref() == Some("MS13-001")));
 
     let logs = String::from_utf8(buf.lock().unwrap().clone()).unwrap();
     assert!(

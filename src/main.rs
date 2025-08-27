@@ -84,6 +84,9 @@ struct Cli {
     /// Print the current database schema version
     #[arg(long = "db-version")]
     db_version: bool,
+    /// Parse a Nessus SQLite export and run post-processing plugins
+    #[arg(long = "nessus-sqlite", value_name = "path")]
+    nessus_sqlite: Option<std::path::PathBuf>,
     /// Path to configuration file
     #[arg(long = "config-file", value_name = "path")]
     config_file: Option<std::path::PathBuf>,
@@ -344,6 +347,24 @@ fn run() -> Result<(), error::Error> {
             });
             println!("{host} - {plugin}");
         }
+        return Ok(());
+    }
+
+    if let Some(path) = cli.nessus_sqlite {
+        let mut report = parser::parse_nessus_sqlite(&path)?;
+        postprocess::process(
+            &mut report,
+            &HashSet::new(),
+            &HashSet::new(),
+            &parser::Filters::default(),
+        );
+        println!(
+            "Parsed {} hosts, {} items, {} plugins, {} attachments",
+            report.hosts.len(),
+            report.items.len(),
+            report.plugins.len(),
+            report.attachments.len()
+        );
         return Ok(());
     }
 

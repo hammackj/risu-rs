@@ -7,7 +7,10 @@ use base64::{Engine, engine::general_purpose};
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 
-use crate::graphs::{TopVulnGraph, WindowsOsGraph};
+use crate::graphs::{
+    HostSeverityCountsGraph, OsDistributionGraph, TopVulnGraph, VulnCategoryGraph,
+    VulnsByServiceGraph, WindowsOsGraph,
+};
 use crate::models::{
     Attachment, FamilySelection, Host, HostProperty, Item, PolicyPlugin, ServiceDescription,
 };
@@ -52,6 +55,40 @@ pub fn top_vuln_graph(conn: &mut SqliteConnection) -> Result<String, Box<dyn Err
 pub fn windows_os_graph(conn: &mut SqliteConnection) -> Result<String, Box<dyn Error>> {
     let dir: PathBuf = std::env::temp_dir();
     let path = WindowsOsGraph::generate(conn, &dir)?;
+    let bytes = fs::read(path)?;
+    embed_graph(&bytes)
+}
+
+/// Generate a general OS distribution graph and return it as a data URI.
+pub fn os_distribution_graph(conn: &mut SqliteConnection) -> Result<String, Box<dyn Error>> {
+    let dir: PathBuf = std::env::temp_dir();
+    let path = OsDistributionGraph::generate(conn, &dir, None)?;
+    let bytes = fs::read(path)?;
+    embed_graph(&bytes)
+}
+
+/// Generate a vulnerabilities by service graph and return it as a data URI.
+pub fn vulns_by_service_graph(conn: &mut SqliteConnection) -> Result<String, Box<dyn Error>> {
+    let dir: PathBuf = std::env::temp_dir();
+    let path = VulnsByServiceGraph::generate(conn, &dir, 10, None)?;
+    let bytes = fs::read(path)?;
+    embed_graph(&bytes)
+}
+
+/// Generate a vulnerability category graph and return it as a data URI.
+pub fn vuln_category_graph(conn: &mut SqliteConnection) -> Result<String, Box<dyn Error>> {
+    let dir: PathBuf = std::env::temp_dir();
+    let path = VulnCategoryGraph::generate(conn, &dir, 10, None)?;
+    let bytes = fs::read(path)?;
+    embed_graph(&bytes)
+}
+
+/// Generate a host severity counts graph and return it as a data URI.
+pub fn host_severity_counts_graph(
+    conn: &mut SqliteConnection,
+) -> Result<String, Box<dyn Error>> {
+    let dir: PathBuf = std::env::temp_dir();
+    let path = HostSeverityCountsGraph::generate(conn, &dir, None)?;
     let bytes = fs::read(path)?;
     embed_graph(&bytes)
 }

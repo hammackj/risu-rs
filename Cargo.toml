@@ -44,3 +44,7 @@ default = ["sqlite"]
 sqlite = ["diesel/sqlite", "diesel_migrations/sqlite"]
 postgres = ["diesel/postgres", "diesel_migrations/postgres"]
 mysql = ["diesel/mysql", "diesel_migrations/mysql"]
+
+[[bin]]
+name = "checksum"
+path = "tools/checksum.rs"

@@ -1,0 +1,16 @@
+<NessusClientData_v2>
+  <ReportHost name="winhost">
+    <HostProperties>
+      <tag name="host-ip">10.0.0.1</tag>
+      <tag name="operating-system-unsupported">Windows XP</tag>
+    </HostProperties>
+    <ReportItem pluginID="100000" port="0" svc_name="" protocol="tcp" severity="0" pluginName="Microsoft Windows XP Unsupported Installation Detection">
+    </ReportItem>
+  </ReportHost>
+  <ReportHost name="linuxhost">
+    <HostProperties>
+      <tag name="host-ip">10.0.0.2</tag>
+      <tag name="operating-system-unsupported">Ubuntu 10.04</tag>
+    </HostProperties>
+  </ReportHost>
+</NessusClientData_v2>

@@ -121,6 +121,51 @@ fn render_template_capture_raw(name: &str) -> String {
     lines.join("\n")
 }
 
+fn render_template_capture_raw_fixture(name: &str, fixture: &str) -> String {
+    let tmp = tempdir().unwrap();
+    let sample = fs::canonicalize(fixture).unwrap();
+
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .args(["--no-banner", "--create-config-file"])
+        .current_dir(&tmp)
+        .assert()
+        .success();
+
+    let output = tmp.path().join("out.csv");
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .current_dir(&tmp)
+        .args([
+            "--no-banner",
+            "--config-file",
+            "config.yml",
+            "parse",
+            sample.to_str().unwrap(),
+            "-o",
+            output.to_str().unwrap(),
+            "-t",
+            name,
+            "--renderer",
+            "csv",
+        ])
+        .assert()
+        .success();
+
+    let csv_data = fs::read_to_string(output).unwrap();
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_reader(csv_data.as_bytes());
+    let mut lines = Vec::new();
+    for rec in rdr.records() {
+        let rec = rec.unwrap();
+        if let Some(cell) = rec.get(0) {
+            lines.push(cell.to_string());
+        }
+    }
+    lines.join("\n")
+}
+
 #[test]
 fn notable_template_renders() {
     run_template("notable", "Notable Findings");
@@ -191,6 +236,16 @@ fn authentication_summary_reports_counts() {
     let output = render_template_capture_raw("authentication_summary");
     assert!(output.contains("Authenticated hosts: 0"));
     assert!(output.contains("Unauthenticated hosts: 0"));
+}
+
+#[test]
+fn remote_local_summary_reports_counts() {
+    let output = render_template_capture_raw_fixture(
+        "remote_local_summary",
+        "tests/fixtures/remote_local.nessus",
+    );
+    assert!(output.contains("Remote findings: 2"));
+    assert!(output.contains("Local findings: 1"));
 }
 
 #[test]

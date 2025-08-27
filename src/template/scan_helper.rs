@@ -42,6 +42,30 @@ pub fn authenticated_count(report: &NessusReport) -> (usize, usize) {
     (auth, unauth)
 }
 
+/// Calculate counts of remote vs local findings based on plugin type.
+pub fn remote_local_counts(report: &NessusReport) -> (usize, usize) {
+    let mut remote = 0usize;
+    let mut local = 0usize;
+    for item in &report.items {
+        if let Some(pid) = item.plugin_id {
+            if let Some(plugin) = report.plugins.iter().find(|p| p.plugin_id == Some(pid)) {
+                if let Some(ref ty) = plugin.plugin_type {
+                    if ty.to_ascii_lowercase().contains("local") {
+                        local += 1;
+                    } else {
+                        remote += 1;
+                    }
+                } else {
+                    remote += 1;
+                }
+            } else {
+                remote += 1;
+            }
+        }
+    }
+    (remote, local)
+}
+
 /// Render an authentication status section.
 pub fn authentication_section(report: &NessusReport) -> String {
     let (auth, unauth) = authenticated_count(report);
@@ -185,7 +209,7 @@ mod tests {
     }
 
     #[test]
-    fn filter_summary_reports_filters() {
+      fn filter_summary_reports_filters() {
         let mut report = sample_report();
         report.filters.host_id = Some(1);
         report.filters.plugin_id = Some(42);
@@ -196,5 +220,14 @@ mod tests {
         assert!(s.contains("plugin-id 42"));
         assert!(s.contains("host-mac aa:bb:cc"));
         assert!(s.contains("host-ip 10.0.0.0/24"));
-    }
-}
+      }
+
+      #[test]
+      fn remote_local_counts_classifies_plugins() {
+          let path = std::path::Path::new("tests/fixtures/remote_local.nessus");
+          let report = crate::parser::parse_file(path).expect("parse fixture");
+          let (remote, local) = remote_local_counts(&report);
+          assert_eq!(remote, 2);
+          assert_eq!(local, 1);
+      }
+  }

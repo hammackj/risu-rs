@@ -11,7 +11,7 @@ pub use super::host_template_helper as host;
 pub use super::malware_helper as malware;
 pub use super::scan_helper as scan;
 #[allow(unused_imports)]
-pub use super::scan_helper::{authenticated_count, scan_info_to_hash};
+pub use super::scan_helper::{authenticated_count, remote_local_counts, scan_info_to_hash};
 pub use super::shares_template_helper as shares;
 
 use chrono::NaiveDateTime;

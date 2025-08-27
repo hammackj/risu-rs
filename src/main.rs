@@ -290,6 +290,7 @@ fn run() -> Result<(), error::Error> {
         manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
         manager.register(Box::new(templates::SslSummaryTemplate));
         manager.register(Box::new(templates::AuthenticationSummaryTemplate));
+        manager.register(Box::new(templates::RemoteLocalSummaryTemplate));
         manager.register(Box::new(templates::CoverSheetTemplate));
         manager.register(Box::new(templates::ExecSummaryTemplate));
         manager.register(Box::new(templates::ExecutiveSummaryDetailedTemplate));
@@ -403,6 +404,7 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
             manager.register(Box::new(templates::SslSummaryTemplate));
             manager.register(Box::new(templates::AuthenticationSummaryTemplate));
+            manager.register(Box::new(templates::RemoteLocalSummaryTemplate));
             manager.register(Box::new(templates::CoverSheetTemplate));
             manager.register(Box::new(templates::ExecSummaryTemplate));
             manager.register(Box::new(templates::ExecutiveSummaryDetailedTemplate));

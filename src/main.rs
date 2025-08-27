@@ -518,6 +518,7 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::FindingStatisticsTemplate));
             manager.register(Box::new(templates::HostFindingsCsvTemplate));
             manager.register(Box::new(templates::HostFindingsCsvOlderThanTemplate));
+            manager.register(Box::new(templates::FixListTemplate));
             manager.register(Box::new(templates::Top25Template));
             manager.register(Box::new(templates::SansTopTemplate));
             manager.register(Box::new(templates::FindingsHostTemplate));

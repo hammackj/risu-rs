@@ -3,10 +3,12 @@ use std::{error::Error, io::Write};
 mod pdf;
 mod csv;
 mod nil;
+mod rtf;
 
 pub use csv::CsvRenderer;
 pub use nil::NilRenderer;
 pub use pdf::PdfRenderer;
+pub use rtf::RtfRenderer;
 
 /// Trait implemented by renderers that output to various formats.
 pub trait Renderer {

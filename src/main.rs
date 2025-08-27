@@ -121,8 +121,8 @@ enum Commands {
         /// Run post-processing plugins on the parsed data
         #[arg(long)]
         post_process: bool,
-        /// Renderer to use (pdf, csv, nil). Use `nil` to discard output.
-        #[arg(long, value_parser = ["pdf", "csv", "nil"])]
+        /// Renderer to use (pdf, csv, rtf, nil). Use `nil` to discard output.
+        #[arg(long, value_parser = ["pdf", "csv", "rtf", "nil"])]
         renderer: Option<String>,
         /// Template-specific arguments as `key=value` pairs
         #[arg(long = "template-arg", value_name = "key=value", value_parser = parse_key_val::<String, String>)]
@@ -167,8 +167,8 @@ enum Commands {
         /// Template author
         #[arg(long)]
         author: Option<String>,
-        /// Renderer type (pdf, csv, nil)
-        #[arg(long, value_parser = ["pdf", "csv", "nil"])]
+        /// Renderer type (pdf, csv, rtf, nil)
+        #[arg(long, value_parser = ["pdf", "csv", "rtf", "nil"])]
         renderer: Option<String>,
     },
 }

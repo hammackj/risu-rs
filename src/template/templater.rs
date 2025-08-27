@@ -61,8 +61,10 @@ impl<'a> Templater<'a> {
             Some("csv") => Box::new(renderer::CsvRenderer::new()),
             Some("nil") => Box::new(renderer::NilRenderer::new()),
             Some("pdf") => Box::new(renderer::PdfRenderer::new(&title_arg)),
+            Some("rtf") => Box::new(renderer::RtfRenderer::new()),
             None => match self.output.extension().and_then(|s| s.to_str()) {
                 Some("csv") => Box::new(renderer::CsvRenderer::new()),
+                Some("rtf") => Box::new(renderer::RtfRenderer::new()),
                 _ => Box::new(renderer::PdfRenderer::new(&title_arg)),
             },
             Some(other) => {

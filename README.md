@@ -103,14 +103,21 @@ the `inventory` crate so they are executed in order after parsing.
 Maintainers can use the provided Makefile to cut releases:
 
 - `make build` – compile optimized binaries.
-- `make hash` – build and emit SHA256/SHA512 checksum files alongside binaries.
+- `make checksum` – write SHA256/SHA512 checksum files to `checksum/`.
 - `make tag VERSION=x.y.z` – create an annotated git tag.
 - `make push VERSION=x.y.z` – push commits and tags to `origin`.
 - `make publish` – publish the crate to crates.io.
-- `make release VERSION=x.y.z [PUBLISH=1]` – run build, hashing, tagging and pushing; set `PUBLISH=1` to also publish the crate.
+- `make release VERSION=x.y.z [PUBLISH=1]` – run build, checksum generation, tagging and pushing; set `PUBLISH=1` to also publish the crate.
 - `make clean` – remove build artifacts.
 - `make test` – run tests against all supported database backends (`make test-sqlite`, `make test-postgres`, `make test-mysql` to run individually).
 - `make notify VERSION=x.y.z WEBHOOK=https://example.com/hook` – send a release announcement to a webhook (e.g. Slack).
+
+Commit the generated files in `checksum/` and reference them in release notes so users can verify downloads:
+
+```bash
+sha256sum -c checksum/risu-rs.sha256
+sha512sum -c checksum/risu-rs.sha512
+```
 
 ## Developer utilities
 

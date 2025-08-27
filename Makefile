@@ -2,15 +2,15 @@ BINARIES := risu-rs
 TARGET_DIR := target/release
 CURRENT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 
-.PHONY: build hash tag push publish release clean test test-sqlite test-postgres test-mysql notify
+.PHONY: build checksum tag push publish release clean test test-sqlite test-postgres test-mysql notify
 
 ## Build optimized binaries
 build:
 	cargo build --release
 
-## Generate SHA256 and SHA512 hashes for binaries
-hash: build
-	@for bin in $(BINARIES); do sha256sum $(TARGET_DIR)/$$bin > $(TARGET_DIR)/$$bin.sha256; sha512sum $(TARGET_DIR)/$$bin > $(TARGET_DIR)/$$bin.sha512; done
+## Generate SHA256 and SHA512 checksums for binaries
+checksum: build
+        cargo run --quiet --bin checksum -- $(addprefix $(TARGET_DIR)/,$(BINARIES))
 
 ## Create an annotated git tag
 # Usage: make tag VERSION=x.y.z
@@ -31,13 +31,13 @@ publish:
 
 ## Run the full release pipeline
 # Usage: make release VERSION=x.y.z [PUBLISH=1]
-release: hash tag push
-	@if [ -n "$(PUBLISH)" ]; then cargo publish; fi
+release: checksum tag push
+        @if [ -n "$(PUBLISH)" ]; then cargo publish; fi
 
 ## Remove build artifacts
 clean:
-	cargo clean
-	rm -f $(TARGET_DIR)/*.sha256 $(TARGET_DIR)/*.sha512
+        cargo clean
+        rm -f checksum/*.sha256 checksum/*.sha512
 
 ## Run tests for all supported database backends
 test: test-sqlite test-postgres test-mysql

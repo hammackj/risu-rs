@@ -1,0 +1,10 @@
+<NessusClientData_v2 version="2.0">
+  <ReportHost name="winhost">
+    <HostProperties>
+      <tag name="host-ip">10.0.0.1</tag>
+    </HostProperties>
+    <ReportItem pluginID="58670" port="0" svc_name="" protocol="tcp" severity="0" pluginName="Microsoft Windows Unquoted Service Path Enumeration">
+      <plugin_output>Unquoted service path found: C:\\Program Files\\Foo Bar\\service.exe</plugin_output>
+    </ReportItem>
+  </ReportHost>
+</NessusClientData_v2>

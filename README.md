@@ -39,11 +39,16 @@ report_prefix: reports/
 template_settings:
   simple:
     title: "Example Report"
+# Override plugin severities keyed by plugin ID
+severity_overrides:
+  41028: 0
 ```
 
 `report_prefix` prepends a directory to generated report paths. The
 `template_settings` map supplies default template arguments; values provided on
-the command line with `--template-arg` override these defaults.
+the command line with `--template-arg` override these defaults. The
+`severity_overrides` map adjusts item severities after parsing, allowing
+specific plugin IDs to be downgraded or upgraded.
 
 ## Template API
 

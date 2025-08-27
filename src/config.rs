@@ -13,6 +13,9 @@
 //! template_settings:
 //!   simple:
 //!     title: Example Report
+//! # Override plugin severities keyed by plugin ID
+//! severity_overrides:
+//!   41028: 0
 //! ```
 
 use serde::{Deserialize, Serialize};
@@ -51,6 +54,9 @@ pub struct Config {
     /// Default argument values passed to templates keyed by template name
     #[serde(default)]
     pub template_settings: HashMap<String, HashMap<String, String>>,
+    /// Override plugin severities keyed by plugin ID
+    #[serde(default)]
+    pub severity_overrides: HashMap<i32, i32>,
 }
 
 impl Default for Config {
@@ -66,6 +72,7 @@ impl Default for Config {
             report_classification: None,
             report_prefix: None,
             template_settings: HashMap::new(),
+            severity_overrides: HashMap::new(),
         }
     }
 }
@@ -106,6 +113,10 @@ pub fn create_config(path: &Path) -> Result<(), crate::error::Error> {
             output
                 .push_str("# Default argument values passed to templates keyed by template name\n");
             output.push_str("# template_settings:\n#   simple:\n#     title: Example Report\n");
+        }
+        if line.starts_with("severity_overrides:") {
+            output.push_str("# Override plugin severities keyed by plugin ID\n");
+            output.push_str("# severity_overrides:\n#   41028: 0\n");
         }
         output.push_str(line);
         output.push('\n');

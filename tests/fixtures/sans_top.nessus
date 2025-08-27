@@ -1,0 +1,38 @@
+<NessusClientData_v2>
+  <ReportHost name="h1">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="1" severity="3" pluginName="PluginA"></ReportItem>
+  </ReportHost>
+  <ReportHost name="h2">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="1" severity="3" pluginName="PluginA"></ReportItem>
+  </ReportHost>
+  <ReportHost name="h3">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="2" severity="4" pluginName="PluginB"></ReportItem>
+  </ReportHost>
+  <ReportHost name="h4">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="2" severity="4" pluginName="PluginB"></ReportItem>
+  </ReportHost>
+  <ReportHost name="h5">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="2" severity="4" pluginName="PluginB"></ReportItem>
+  </ReportHost>
+  <ReportHost name="h6">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="3" severity="3" pluginName="PluginC"></ReportItem>
+  </ReportHost>
+  <ReportHost name="h7">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="4" severity="2" pluginName="LowPlugin"></ReportItem>
+  </ReportHost>
+  <ReportHost name="h8">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="4" severity="2" pluginName="LowPlugin"></ReportItem>
+  </ReportHost>
+  <ReportHost name="h9">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="4" severity="2" pluginName="LowPlugin"></ReportItem>
+  </ReportHost>
+</NessusClientData_v2>

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
@@ -7,7 +8,9 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 
 use crate::graphs::{TopVulnGraph, WindowsOsGraph};
-use crate::models::{Attachment, FamilySelection, Host, HostProperty, Item, PolicyPlugin};
+use crate::models::{
+    Attachment, FamilySelection, Host, HostProperty, Item, PolicyPlugin, ServiceDescription,
+};
 use crate::renderer::Renderer;
 
 /// Produce a message indicating the operating system is unsupported.
@@ -253,9 +256,42 @@ pub fn plugin_bid_identifiers(
         .unwrap_or_default())
 }
 
+/// Count service descriptions associated with each host.
+///
+/// Returns a map of host identifiers to the number of service descriptions
+/// observed for that host.
+pub fn service_count_by_host(services: &[ServiceDescription]) -> HashMap<i32, usize> {
+    let mut counts: HashMap<i32, usize> = HashMap::new();
+    for svc in services {
+        if let Some(hid) = svc.host_id {
+            *counts.entry(hid).or_default() += 1;
+        }
+    }
+    counts
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn counts_services_per_host() {
+        let svc1 = ServiceDescription {
+            host_id: Some(1),
+            ..Default::default()
+        };
+        let svc2 = ServiceDescription {
+            host_id: Some(1),
+            ..Default::default()
+        };
+        let svc3 = ServiceDescription {
+            host_id: Some(2),
+            ..Default::default()
+        };
+        let counts = service_count_by_host(&[svc1, svc2, svc3]);
+        assert_eq!(counts.get(&1), Some(&2));
+        assert_eq!(counts.get(&2), Some(&1));
+    }
 
     #[test]
     fn detects_default_credential_plugins() {

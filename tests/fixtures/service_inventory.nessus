@@ -1,0 +1,14 @@
+<NessusClientData_v2 version="2.0">
+  <ReportHost name="192.0.2.1">
+    <HostProperties>
+      <tag name="host-ip">192.0.2.1</tag>
+    </HostProperties>
+    <ReportItem pluginID='22964' port='22' svc_name='ssh' protocol='tcp' severity='0' pluginName='Service Detection'>
+      <plugin_output>SSH-2.0-OpenSSH_7.2p2 Ubuntu-4ubuntu2.8</plugin_output>
+    </ReportItem>
+    <ReportItem pluginID='22964' port='80' svc_name='http' protocol='tcp' severity='0' pluginName='Service Detection'>
+      <plugin_output>Apache httpd 2.4.41 ((Ubuntu))</plugin_output>
+    </ReportItem>
+  </ReportHost>
+</NessusClientData_v2>
+

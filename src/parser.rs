@@ -1,17 +1,22 @@
 //! Utilities for parsing vulnerability scan reports into in-memory models.
 
 mod nexpose;
+mod nmap;
+mod openvas;
+mod qualys;
+mod saint;
+mod security_center;
 mod simple_nexpose;
 
 use std::collections::{BTreeSet, HashSet};
 use std::fs;
-use std::path::{Path, PathBuf};
 use std::net::IpAddr;
+use std::path::{Path, PathBuf};
 
+use ipnet::IpNet;
 use quick_xml::Reader;
 use quick_xml::events::Event;
 use tracing::{debug, info};
-use ipnet::IpNet;
 
 use crate::models::{
     Attachment, FamilySelection, Host, HostProperty, Item, Patch, Plugin, PluginPreference, Policy,
@@ -187,11 +192,33 @@ pub fn parse_file(path: &Path) -> Result<NessusReport, crate::error::Error> {
             let report = simple_nexpose::parse_file(path)?;
             Ok(report.into())
         }
+        Some("nmap") => {
+            return nmap::parse_file(path);
+        }
+        Some("openvas") => {
+            return openvas::parse_file(path);
+        }
+        Some("qualys") => {
+            return qualys::parse_file(path);
+        }
+        Some("saint") => {
+            return saint::parse_file(path);
+        }
+        Some("sc") | Some("securitycenter") => {
+            return security_center::parse_file(path);
+        }
         _ => {
             let root = root_element_name(path)?;
             match root.as_deref() {
                 Some("NeXposeSimpleXML") => nexpose::nexpose_document::parse_file(path),
+                Some("nmaprun") => nmap::parse_file(path),
                 Some("NessusClientData_v2") => parse_nessus(path),
+                Some("openvas-report") | Some("openvas") => openvas::parse_file(path),
+                Some("SecurityCenter") | Some("security_center") => {
+                    security_center::parse_file(path)
+                }
+                Some("QUALYS") | Some("SCAN") => qualys::parse_file(path),
+                Some("SaintReport") => saint::parse_file(path),
                 Some(other) => Err(crate::error::Error::InvalidDocument(format!(
                     "{}: unsupported root element '{}'",
                     path.display(),
@@ -250,10 +277,7 @@ pub fn filter_report(
             }
         }
         if let Some(ref mac) = filters.host_mac {
-            let m = host
-                .mac
-                .as_ref()
-                .map(|s| s.to_ascii_lowercase());
+            let m = host.mac.as_ref().map(|s| s.to_ascii_lowercase());
             if m.as_deref() != Some(&mac.to_ascii_lowercase()) {
                 keep = false;
             }
@@ -284,7 +308,8 @@ pub fn filter_report(
     let mut new_items = Vec::new();
     for mut item in report.items.drain(..) {
         let pid = item.plugin_id.unwrap_or(0);
-        let mut keep = (whitelist.is_empty() || whitelist.contains(&pid)) && !blacklist.contains(&pid);
+        let mut keep =
+            (whitelist.is_empty() || whitelist.contains(&pid)) && !blacklist.contains(&pid);
         if let Some(pid_f) = filters.plugin_id {
             if item.plugin_id != Some(pid_f) {
                 keep = false;

@@ -1,0 +1,18 @@
+<NessusClientData_v2>
+  <ReportHost name="vmwarehost">
+    <HostProperties>
+      <tag name="host-ip">10.0.0.1</tag>
+    </HostProperties>
+    <ReportItem pluginID="20094" port="0" svc_name="" protocol="tcp" severity="0" pluginName="Virtual Machine Detection">
+      <plugin_output>Hypervisor: VMware</plugin_output>
+    </ReportItem>
+  </ReportHost>
+  <ReportHost name="hypervhost">
+    <HostProperties>
+      <tag name="host-ip">10.0.0.2</tag>
+    </HostProperties>
+    <ReportItem pluginID="20094" port="0" svc_name="" protocol="tcp" severity="0" pluginName="Virtual Machine Detection">
+      <plugin_output>Hypervisor: Hyper-V</plugin_output>
+    </ReportItem>
+  </ReportHost>
+</NessusClientData_v2>

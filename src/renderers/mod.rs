@@ -22,4 +22,8 @@ pub trait Renderer {
     fn heading(&mut self, _level: usize, text: &str) -> Result<(), Box<dyn Error>> {
         self.text(text)
     }
+    /// Embed an image provided as a data URI. Default fallback prints the URI.
+    fn image_data_uri(&mut self, data_uri: &str) -> Result<(), Box<dyn Error>> {
+        self.text(data_uri)
+    }
 }

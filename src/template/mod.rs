@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 
-use crate::{graphs, parser::NessusReport, renderer::Renderer};
+use crate::{parser::NessusReport, renderer::Renderer};
 
 pub mod create;
 pub mod graph_template_helper;
@@ -75,11 +75,13 @@ impl Template for SimpleTemplate {
 
         // Generate example graphs in the system temporary directory.
         let tmp = std::env::temp_dir();
-        if let Ok(p) = graphs::os_distribution(report, &tmp) {
-            renderer.text(&format!("OS distribution chart: {}", p.display()))?;
+        if let Ok(uri) = crate::template::graph_template_helper::os_distribution_data_uri(report, &tmp) {
+            renderer.text("OS distribution chart:")?;
+            renderer.image_data_uri(&uri)?;
         }
-        if let Ok(p) = graphs::top_vulnerabilities(report, &tmp, 5) {
-            renderer.text(&format!("Top vulnerabilities chart: {}", p.display()))?;
+        if let Ok(uri) = crate::template::graph_template_helper::top_vuln_data_uri(report, &tmp, 5) {
+            renderer.text("Top vulnerabilities chart:")?;
+            renderer.image_data_uri(&uri)?;
         }
         Ok(())
     }

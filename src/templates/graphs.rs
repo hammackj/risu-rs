@@ -24,11 +24,11 @@ impl Template for GraphsTemplate {
         let tmp = std::env::temp_dir();
         if let Ok(uri) = graph::os_distribution_data_uri(report, &tmp) {
             renderer.heading(2, "OS distribution (Windows 2000/XP variants combined)")?;
-            renderer.text(&uri)?;
+            renderer.image_data_uri(&uri)?;
         }
         if let Ok(uri) = graph::top_vuln_data_uri(report, &tmp, 5) {
             renderer.heading(2, "Top vulnerabilities")?;
-            renderer.text(&uri)?;
+            renderer.image_data_uri(&uri)?;
         }
         Ok(())
     }

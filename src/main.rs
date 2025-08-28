@@ -25,10 +25,24 @@ use renderers as renderer;
 mod analysis;
 mod schema;
 mod persist;
+mod loader;
 mod template;
 mod templates;
 mod version;
 mod bug_report;
+#[derive(Subcommand)]
+enum DbAction {
+    /// Create tables in the database
+    CreateTables,
+    /// Drop tables in the database
+    DropTables,
+    /// Test database connection
+    TestConnection,
+    /// Print the current database schema version
+    Version,
+    /// Open an interactive database console (SQLite only)
+    Console,
+}
 
 use chrono::{Duration, Utc};
 use clap::{Parser, Subcommand};
@@ -75,24 +89,6 @@ struct Cli {
     /// Comma-separated plugin IDs to whitelist
     #[arg(long, value_name = "id,...", value_delimiter = ',')]
     whitelist: Vec<i32>,
-    /// Open an interactive database console
-    #[arg(long)]
-    console: bool,
-    /// Create tables in the database
-    #[arg(long)]
-    create_tables: bool,
-    /// Drop tables in the database
-    #[arg(long)]
-    drop_tables: bool,
-    /// Test database connection
-    #[arg(long)]
-    test_connection: bool,
-    /// Database backend to use (sqlite, mysql, postgres)
-    #[arg(long, value_parser = ["sqlite", "mysql", "postgres"], default_value = "sqlite")]
-    database_backend: String,
-    /// Print the current database schema version
-    #[arg(long = "db-version")]
-    db_version: bool,
     /// Parse a Nessus SQLite export and run post-processing plugins
     #[arg(long = "nessus-sqlite", value_name = "path")]
     nessus_sqlite: Option<std::path::PathBuf>,
@@ -112,35 +108,35 @@ enum Commands {
     Parse {
         /// File to parse
         file: std::path::PathBuf,
-        /// Template to use for rendering. Templates are searched in
-        /// `src/templates`, the current directory, and `$HOME/.risu/templates`.
+        /// Run post-processing plugins on the parsed data
+        #[arg(long)]
+        post_process: bool,
+    },
+    /// Database management commands
+    Database {
+        /// Database backend to use (sqlite, mysql, postgres). Defaults to config value.
+        #[arg(long = "backend", value_parser = ["sqlite", "mysql", "postgres"])]
+        backend: Option<String>,
+        #[command(subcommand)]
+        action: DbAction,
+    },
+    /// Render a report from the database without re-parsing input
+    Render {
+        /// Report ID to render (defaults to latest if omitted)
+        #[arg(long = "report-id")]
+        report_id: Option<i32>,
+        /// Template to use for rendering
         #[arg(short, long, default_value = "simple")]
         template: String,
         /// Output file for generated document
         #[arg(short, long, default_value = "output.pdf")]
         output: std::path::PathBuf,
-        /// Run post-processing plugins on the parsed data
-        #[arg(long)]
-        post_process: bool,
-        // Built-in rollups have been removed; TOML rollups are used instead.
-        /// Renderer to use (pdf, csv, rtf, nil). Use `nil` to discard output.
+        /// Renderer to use (pdf, csv, rtf, nil)
         #[arg(long, value_parser = ["pdf", "csv", "rtf", "nil"])]
         renderer: Option<String>,
         /// Template-specific arguments as `key=value` pairs
         #[arg(long = "template-arg", value_name = "key=value", value_parser = parse_key_val::<String, String>)]
         template_args: Vec<(String, String)>,
-        /// Report title metadata
-        #[arg(long = "report-title")]
-        report_title: Option<String>,
-        /// Report author metadata
-        #[arg(long = "report-author")]
-        report_author: Option<String>,
-        /// Report company metadata
-        #[arg(long = "report-company")]
-        report_company: Option<String>,
-        /// Report classification metadata
-        #[arg(long = "report-classification")]
-        report_classification: Option<String>,
         /// Only include findings older than the specified number of days
         #[arg(long = "older-than", value_name = "days")]
         older_than: Option<i64>,
@@ -150,10 +146,10 @@ enum Commands {
         /// Only include hosts with the specified MAC address
         #[arg(long = "host-mac", value_name = "addr")]
         host_mac: Option<String>,
-        /// Only include the host with the given internal ID
+        /// Only include the host with the given internal ID (in-memory index)
         #[arg(long = "host-id", value_name = "id")]
         host_id: Option<i32>,
-        /// Only include items matching this plugin ID
+        /// Only include items matching this plugin ID (external)
         #[arg(long = "plugin-id", value_name = "id")]
         plugin_id: Option<i32>,
     },
@@ -250,97 +246,11 @@ fn run() -> Result<(), error::Error> {
     }
 
     let mut cfg = config::load_config(&config_path).unwrap_or_default();
-    cfg.database_backend = cli.database_backend.clone();
-
-    if cli.db_version {
-        if cfg.database_backend != "sqlite" {
-            return Err(error::Error::Config(
-                "db-version is only supported with the sqlite backend".to_string(),
-            ));
-        }
-        let mut conn = SqliteConnection::establish(&cfg.database_url)?;
-        match version::db_version(&mut conn)? {
-            Some(v) => println!("{v}"),
-            None => println!("unknown"),
-        }
-        return Ok(());
-    }
-
-    if cli.create_tables || cli.drop_tables {
-        migrate::run(
-            &cfg.database_url,
-            &cfg.database_backend,
-            cli.create_tables,
-            cli.drop_tables,
-        )?;
-        println!("Migration complete");
-        return Ok(());
-    }
-
-    if cli.test_connection {
-        match cfg.database_backend.as_str() {
-            "postgres" => {
-                #[cfg(feature = "postgres")]
-                {
-                    match diesel::pg::PgConnection::establish(&cfg.database_url) {
-                        Ok(_) => println!("Database connection successful"),
-                        Err(e) => {
-                            println!("Database connection failed: {e}");
-                            return Err(e.into());
-                        }
-                    }
-                }
-                #[cfg(not(feature = "postgres"))]
-                {
-                    println!("PostgreSQL support not enabled");
-                }
-            }
-            "mysql" => {
-                #[cfg(feature = "mysql")]
-                {
-                    match diesel::mysql::MysqlConnection::establish(&cfg.database_url) {
-                        Ok(_) => println!("Database connection successful"),
-                        Err(e) => {
-                            println!("Database connection failed: {e}");
-                            return Err(e.into());
-                        }
-                    }
-                }
-                #[cfg(not(feature = "mysql"))]
-                {
-                    println!("MySQL support not enabled");
-                }
-            }
-            _ => {
-                match SqliteConnection::establish(&cfg.database_url) {
-                    Ok(_) => println!("Database connection successful"),
-                    Err(e) => {
-                        println!("Database connection failed: {e}");
-                        return Err(e.into());
-                    }
-                }
-            }
-        }
-        return Ok(());
-    }
 
     if cfg.database_backend == "sqlite" {
         if let Ok(mut conn) = SqliteConnection::establish(&cfg.database_url) {
             version::warn_on_mismatch(&mut conn);
         }
-    }
-
-    if cfg.database_backend != "sqlite" {
-        println!(
-            "Only migration and connection tests are supported for backend '{}'",
-            cfg.database_backend
-        );
-        return Ok(());
-    }
-
-    if cli.console {
-        console::run(&config_path)?;
-        return Ok(());
     }
 
     if cli.list_post_process {
@@ -448,37 +358,19 @@ fn run() -> Result<(), error::Error> {
     }
 
     match cli.command {
-        Some(Commands::Parse {
-            file,
-            template: tmpl_name,
-            output,
-            post_process,
-            renderer: renderer_opt,
-            template_args,
-            report_title,
-            report_author,
-            report_company,
-            report_classification,
-            older_than,
-            host_ip,
-            host_mac,
-            host_id,
-            plugin_id,
-        }) => {
+        Some(Commands::Parse { file, post_process }) => {
             let blacklist: HashSet<i32> = cli.blacklist.iter().cloned().collect();
             let whitelist: HashSet<i32> = cli.whitelist.iter().cloned().collect();
             let mut report = parser::parse_file(&file)?;
             parser::apply_severity_overrides(&mut report, &cfg.severity_overrides);
-            let filters = parser::Filters {
-                host_ip,
-                host_mac,
-                host_id,
-                plugin_id,
-            };
-            report.filters = filters.clone();
-            parser::filter_report(&mut report, &whitelist, &blacklist, &filters);
+            report.filters = parser::Filters::default();
             if post_process {
-                postprocess::process(&mut report, &whitelist, &blacklist, &filters);
+                postprocess::process(
+                    &mut report,
+                    &whitelist,
+                    &blacklist,
+                    &parser::Filters::default(),
+                );
             }
 
             // Provide immediate feedback that parsing completed successfully.
@@ -490,16 +382,36 @@ fn run() -> Result<(), error::Error> {
                 report.attachments.len()
             );
 
-            // Persist parsed data into SQLite before rendering.
+            // Persist parsed data into SQLite.
             let mut conn = SqliteConnection::establish(&cfg.database_url)?;
             persist::to_sqlite(&mut conn, &report)?;
-
-            // Populate report metadata from CLI or configuration
-            report.report.title = report_title.or(cfg.report_title.clone());
-            report.report.author = report_author.or(cfg.report_author.clone());
-            report.report.company = report_company.or(cfg.report_company.clone());
-            report.report.classification =
-                report_classification.or(cfg.report_classification.clone());
+        }
+        Some(Commands::PluginIndex { dir }) => {
+            plugin_index::run(&dir)?;
+        }
+        Some(Commands::Render {
+            report_id,
+            template: tmpl_name,
+            output,
+            renderer: renderer_opt,
+            template_args,
+            older_than,
+            host_ip,
+            host_mac,
+            host_id,
+            plugin_id,
+        }) => {
+            let mut conn = SqliteConnection::establish(&cfg.database_url)?;
+            let mut report = loader::load_report(&mut conn, report_id)?;
+            parser::apply_severity_overrides(&mut report, &cfg.severity_overrides);
+            let filters = parser::Filters {
+                host_ip,
+                host_mac,
+                host_id,
+                plugin_id,
+            };
+            report.filters = filters.clone();
+            parser::filter_report(&mut report, &HashSet::new(), &HashSet::new(), &filters);
 
             let paths = cfg
                 .template_paths
@@ -551,6 +463,7 @@ fn run() -> Result<(), error::Error> {
             manager.register(Box::new(templates::UnsupportedOsTemplate));
             manager.register(Box::new(templates::VirtualMachineSummaryTemplate));
             manager.load_templates().map_err(error::Error::Template)?;
+
             let mut template_args_map: HashMap<String, String> = cfg
                 .template_settings
                 .get(&tmpl_name)
@@ -569,14 +482,12 @@ fn run() -> Result<(), error::Error> {
                 .as_ref()
                 .map(|p| std::path::PathBuf::from(p).join(&output))
                 .unwrap_or(output);
+
             let mut templater =
                 template::templater::Templater::new(tmpl_name, &mut conn, output, manager);
             templater
                 .generate(&report, renderer_opt.as_deref(), &template_args_map)
                 .map_err(error::Error::Template)?;
-        }
-        Some(Commands::PluginIndex { dir }) => {
-            plugin_index::run(&dir)?;
         }
         Some(Commands::CreateTemplate {
             name,
@@ -588,6 +499,88 @@ fn run() -> Result<(), error::Error> {
                 .unwrap_or_else(|| "unknown".to_string());
             let renderer = renderer.unwrap_or_else(|| "pdf".to_string());
             template::create::scaffold(&name, &author, &renderer)?;
+        }
+        Some(Commands::Database { backend, action }) => {
+            if let Some(b) = backend {
+                cfg.database_backend = b;
+            }
+            match action {
+                DbAction::CreateTables | DbAction::DropTables => {
+                    migrate::run(
+                        &cfg.database_url,
+                        &cfg.database_backend,
+                        matches!(action, DbAction::CreateTables),
+                        matches!(action, DbAction::DropTables),
+                    )?;
+                    println!("Migration complete");
+                }
+                DbAction::TestConnection => {
+                    match cfg.database_backend.as_str() {
+                        "postgres" => {
+                            #[cfg(feature = "postgres")]
+                            {
+                                match diesel::pg::PgConnection::establish(&cfg.database_url) {
+                                    Ok(_) => println!("Database connection successful"),
+                                    Err(e) => {
+                                        println!("Database connection failed: {e}");
+                                        return Err(e.into());
+                                    }
+                                }
+                            }
+                            #[cfg(not(feature = "postgres"))]
+                            {
+                                println!("PostgreSQL support not enabled");
+                            }
+                        }
+                        "mysql" => {
+                            #[cfg(feature = "mysql")]
+                            {
+                                match diesel::mysql::MysqlConnection::establish(&cfg.database_url)
+                                {
+                                    Ok(_) => println!("Database connection successful"),
+                                    Err(e) => {
+                                        println!("Database connection failed: {e}");
+                                        return Err(e.into());
+                                    }
+                                }
+                            }
+                            #[cfg(not(feature = "mysql"))]
+                            {
+                                println!("MySQL support not enabled");
+                            }
+                        }
+                        _ => match SqliteConnection::establish(&cfg.database_url) {
+                            Ok(_) => println!("Database connection successful"),
+                            Err(e) => {
+                                println!("Database connection failed: {e}");
+                                return Err(e.into());
+                            }
+                        },
+                    }
+                }
+                DbAction::Version => {
+                    if cfg.database_backend != "sqlite" {
+                        return Err(error::Error::Config(
+                            "db version is only supported with the sqlite backend".to_string(),
+                        ));
+                    }
+                    let mut conn = SqliteConnection::establish(&cfg.database_url)?;
+                    match version::db_version(&mut conn)? {
+                        Some(v) => println!("{v}"),
+                        None => println!("unknown"),
+                    }
+                }
+                DbAction::Console => {
+                    if cfg.database_backend != "sqlite" {
+                        println!(
+                            "Console is only supported for sqlite backend; configured '{}'",
+                            cfg.database_backend
+                        );
+                        return Ok(());
+                    }
+                    console::run(&config_path)?;
+                }
+            }
         }
         None => {}
     }

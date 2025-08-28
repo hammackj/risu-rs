@@ -4,8 +4,11 @@ use printpdf::{
     BuiltinFont, IndirectFontRef, Mm, PdfDocument, PdfDocumentReference, PdfLayerReference,
     PdfPageIndex,
 };
+use base64::engine::general_purpose;
+use base64::Engine;
 
 use super::Renderer;
+use printpdf::image_crate::GenericImageView;
 
 /// Renderer that produces PDF documents using the `printpdf` crate.
 pub struct PdfRenderer {
@@ -44,6 +47,40 @@ impl PdfRenderer {
 
 impl Renderer for PdfRenderer {
     fn text(&mut self, text: &str) -> Result<(), Box<dyn Error>> {
+        // Detect data URI images and embed them instead of printing the string.
+        if let Some(pos) = text.find(",") {
+            let (prefix, data) = text.split_at(pos + 1);
+            if prefix.starts_with("data:image/") && prefix.contains(";base64,") {
+                let bytes = general_purpose::STANDARD.decode(data.as_bytes())?;
+                let image = printpdf::image_crate::load_from_memory(&bytes)?;
+                let (px_w, px_h) = image.dimensions();
+                let img = printpdf::Image::from_dynamic_image(&image);
+                // Convert pixels to mm assuming 96 DPI
+                let mm_w = (px_w as f64) * 25.4 / 96.0;
+                let mm_h = (px_h as f64) * 25.4 / 96.0;
+                let max_w = 190.0; // page width (210) - margins (10 each)
+                let scale = if mm_w > max_w { max_w / mm_w } else { 1.0 };
+                let draw_w = Mm(mm_w * scale);
+                let draw_h = Mm(mm_h * scale);
+                // Move down for image height and add some spacing after
+                let y = self.cursor_y - draw_h;
+                img.add_to_layer(
+                    self.layer.clone(),
+                    printpdf::ImageTransform {
+                        translate_x: Some(Mm(10.0)),
+                        translate_y: Some(y),
+                        // Use dpi and uniform scale so size in mm follows our calculation
+                        dpi: Some(96.0),
+                        scale_x: Some(scale),
+                        scale_y: Some(scale),
+                        ..Default::default()
+                    },
+                );
+                self.cursor_y = y - Mm(10.0);
+                return Ok(());
+            }
+        }
+        // Fallback: plain text
         self.layer
             .use_text(text.to_string(), 14.0, Mm(10.0), self.cursor_y, &self.font);
         self.cursor_y -= Mm(16.0);

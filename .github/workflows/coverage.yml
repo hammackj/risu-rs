@@ -60,10 +60,16 @@ jobs:
         with:
           name: coverage-reports
           path: .
+      - name: Prepare site directory structure
+        run: |
+          mkdir -p site/coverage
+          # Copy static site files if present
+          if [ -d docs/site ]; then cp -r docs/site/* site/; fi
+          cp -r coverage/* site/coverage/
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: coverage
+          path: site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

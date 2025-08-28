@@ -1,0 +1,21 @@
+<NessusClientData_v2>
+  <ReportHost name="h">
+    <HostProperties></HostProperties>
+    <ReportItem pluginID="1" severity="0" pluginName="plug">
+      <plugin_version>1.2.3</plugin_version>
+      <plugin_publication_date>2023-01-01</plugin_publication_date>
+      <plugin_modification_date>2023-01-02</plugin_modification_date>
+      <vuln_publication_date>2023-01-03</vuln_publication_date>
+      <cvss_vector>AV:N/AC:L/Au:N/C:P/I:P/A:P</cvss_vector>
+      <cvss_temporal_score>7.2</cvss_temporal_score>
+      <cvss_temporal_vector>E:F/RL:OF/RC:C</cvss_temporal_vector>
+      <exploitability_ease>Exploits are available</exploitability_ease>
+      <synopsis>syn</synopsis>
+      <exploit_framework_core>core</exploit_framework_core>
+      <exploit_framework_metasploit>metasploit</exploit_framework_metasploit>
+      <exploit_framework_canvas>canvas</exploit_framework_canvas>
+      <exploit_framework_exploithub>exploithub</exploit_framework_exploithub>
+      <exploit_framework_d2_elliot>d2</exploit_framework_d2_elliot>
+    </ReportItem>
+  </ReportHost>
+</NessusClientData_v2>

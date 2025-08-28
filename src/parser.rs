@@ -24,7 +24,7 @@ use crate::models::{
     PolicyPlugin, Reference, Report, Scanner, ServerPreference, ServiceDescription,
 };
 use base64::{Engine, engine::general_purpose};
-use chrono::NaiveDateTime;
+use chrono::{NaiveDate, NaiveDateTime};
 use lazy_static::lazy_static;
 use regex::Regex;
 use sha2::{Digest, Sha256};
@@ -706,6 +706,20 @@ fn parse_nessus(path: &Path, scanner_name: &str) -> Result<NessusReport, crate::
                 | b"solution"
                 | b"risk_factor"
                 | b"cvss_base_score"
+                | b"plugin_version"
+                | b"plugin_publication_date"
+                | b"plugin_modification_date"
+                | b"vuln_publication_date"
+                | b"cvss_vector"
+                | b"cvss_temporal_score"
+                | b"cvss_temporal_vector"
+                | b"exploitability_ease"
+                | b"synopsis"
+                | b"exploit_framework_core"
+                | b"exploit_framework_metasploit"
+                | b"exploit_framework_canvas"
+                | b"exploit_framework_exploithub"
+                | b"exploit_framework_d2_elliot"
                 | b"cm:compliance-info"
                 | b"cm:compliance-actual-value"
                 | b"cm:compliance-check-id"
@@ -849,6 +863,208 @@ fn parse_nessus(path: &Path, scanner_name: &str) -> Result<NessusReport, crate::
                                                 if plugin.cvss_base_score.is_none() {
                                                     plugin.cvss_base_score = Some(score);
                                                 }
+                                            }
+                                        }
+                                    }
+                                }
+                                "plugin_version" => {
+                                    item.plugin_version = Some(text.clone());
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.plugin_version.is_none() {
+                                                plugin.plugin_version = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "plugin_publication_date" => {
+                                    if let Some(dt) = parse_datetime(&text) {
+                                        item.plugin_publication_date = Some(dt);
+                                        if let Some(pid) = item.plugin_id {
+                                            if let Some(plugin) = report
+                                                .plugins
+                                                .iter_mut()
+                                                .find(|p| p.plugin_id == Some(pid))
+                                            {
+                                                if plugin.plugin_publication_date.is_none() {
+                                                    plugin.plugin_publication_date = Some(dt);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                "plugin_modification_date" => {
+                                    if let Some(dt) = parse_datetime(&text) {
+                                        item.plugin_modification_date = Some(dt);
+                                        if let Some(pid) = item.plugin_id {
+                                            if let Some(plugin) = report
+                                                .plugins
+                                                .iter_mut()
+                                                .find(|p| p.plugin_id == Some(pid))
+                                            {
+                                                if plugin.plugin_modification_date.is_none() {
+                                                    plugin.plugin_modification_date = Some(dt);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                "vuln_publication_date" => {
+                                    if let Some(dt) = parse_datetime(&text) {
+                                        item.vuln_publication_date = Some(dt);
+                                        if let Some(pid) = item.plugin_id {
+                                            if let Some(plugin) = report
+                                                .plugins
+                                                .iter_mut()
+                                                .find(|p| p.plugin_id == Some(pid))
+                                            {
+                                                if plugin.vuln_publication_date.is_none() {
+                                                    plugin.vuln_publication_date = Some(dt);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                "cvss_vector" => {
+                                    item.cvss_vector = Some(text.clone());
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.cvss_vector.is_none() {
+                                                plugin.cvss_vector = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "cvss_temporal_score" => {
+                                    item.cvss_temporal_score = Some(text.clone());
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.cvss_temporal_score.is_none() {
+                                                plugin.cvss_temporal_score = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "cvss_temporal_vector" => {
+                                    item.cvss_temporal_vector = Some(text.clone());
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.cvss_temporal_vector.is_none() {
+                                                plugin.cvss_temporal_vector = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "exploitability_ease" => {
+                                    item.exploitability_ease = Some(text.clone());
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.exploitability_ease.is_none() {
+                                                plugin.exploitability_ease = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "synopsis" => {
+                                    item.synopsis = Some(text.clone());
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.synopsis.is_none() {
+                                                plugin.synopsis = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "exploit_framework_core" => {
+                                    item.exploit_framework_core = Some(text.clone());
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.exploit_framework_core.is_none() {
+                                                plugin.exploit_framework_core = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "exploit_framework_metasploit" => {
+                                    item.exploit_framework_metasploit = Some(text.clone());
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.exploit_framework_metasploit.is_none() {
+                                                plugin.exploit_framework_metasploit = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "exploit_framework_canvas" => {
+                                    item.exploit_framework_canvas = Some(text.clone());
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.exploit_framework_canvas.is_none() {
+                                                plugin.exploit_framework_canvas = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "exploit_framework_exploithub" => {
+                                    item.exploit_framework_exploithub = Some(text.clone());
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.exploit_framework_exploithub.is_none() {
+                                                plugin.exploit_framework_exploithub = Some(text.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                                "exploit_framework_d2_elliot" => {
+                                    item.exploit_framework_d2_elliot = Some(text.clone());
+                                    if let Some(pid) = item.plugin_id {
+                                        if let Some(plugin) = report
+                                            .plugins
+                                            .iter_mut()
+                                            .find(|p| p.plugin_id == Some(pid))
+                                        {
+                                            if plugin.exploit_framework_d2_elliot.is_none() {
+                                                plugin.exploit_framework_d2_elliot = Some(text.clone());
                                             }
                                         }
                                     }
@@ -1556,6 +1772,21 @@ fn empty_host() -> Host {
     }
 }
 
+fn parse_datetime(text: &str) -> Option<NaiveDateTime> {
+    if let Ok(dt) = NaiveDateTime::parse_from_str(text, "%Y-%m-%d %H:%M:%S") {
+        return Some(dt);
+    }
+    if let Ok(dt) = NaiveDateTime::parse_from_str(text, "%Y/%m/%d %H:%M:%S") {
+        return Some(dt);
+    }
+    if let Ok(date) = NaiveDate::parse_from_str(text, "%Y-%m-%d")
+        .or_else(|_| NaiveDate::parse_from_str(text, "%Y/%m/%d"))
+    {
+        return date.and_hms_opt(0, 0, 0);
+    }
+    None
+}
+
 fn empty_item() -> Item {
     Item {
         id: 0,
@@ -1572,6 +1803,20 @@ fn empty_item() -> Item {
         solution: None,
         risk_factor: None,
         cvss_base_score: None,
+        plugin_version: None,
+        plugin_publication_date: None,
+        plugin_modification_date: None,
+        vuln_publication_date: None,
+        cvss_vector: None,
+        cvss_temporal_score: None,
+        cvss_temporal_vector: None,
+        exploitability_ease: None,
+        synopsis: None,
+        exploit_framework_core: None,
+        exploit_framework_metasploit: None,
+        exploit_framework_canvas: None,
+        exploit_framework_exploithub: None,
+        exploit_framework_d2_elliot: None,
         verified: None,
         cm_compliance_info: None,
         cm_compliance_actual_value: None,

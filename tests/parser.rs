@@ -150,6 +150,52 @@ fn parses_plugin_flags() {
 }
 
 #[test]
+fn parses_additional_plugin_metadata() {
+    use chrono::NaiveDate;
+    let path = fs::canonicalize("tests/fixtures/plugin_additional.nessus").unwrap();
+    let report = parse_file(&path).unwrap();
+
+    let item = report.items.first().unwrap();
+    assert_eq!(item.plugin_version.as_deref(), Some("1.2.3"));
+    let pub_date = NaiveDate::from_ymd_opt(2023, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
+    let mod_date = NaiveDate::from_ymd_opt(2023, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap();
+    let vuln_date = NaiveDate::from_ymd_opt(2023, 1, 3).unwrap().and_hms_opt(0, 0, 0).unwrap();
+    assert_eq!(item.plugin_publication_date, Some(pub_date));
+    assert_eq!(item.plugin_modification_date, Some(mod_date));
+    assert_eq!(item.vuln_publication_date, Some(vuln_date));
+    assert_eq!(item.cvss_vector.as_deref(), Some("AV:N/AC:L/Au:N/C:P/I:P/A:P"));
+    assert_eq!(item.cvss_temporal_score.as_deref(), Some("7.2"));
+    assert_eq!(item.cvss_temporal_vector.as_deref(), Some("E:F/RL:OF/RC:C"));
+    assert_eq!(item.exploitability_ease.as_deref(), Some("Exploits are available"));
+    assert_eq!(item.synopsis.as_deref(), Some("syn"));
+    assert_eq!(item.exploit_framework_core.as_deref(), Some("core"));
+    assert_eq!(item.exploit_framework_metasploit.as_deref(), Some("metasploit"));
+    assert_eq!(item.exploit_framework_canvas.as_deref(), Some("canvas"));
+    assert_eq!(item.exploit_framework_exploithub.as_deref(), Some("exploithub"));
+    assert_eq!(item.exploit_framework_d2_elliot.as_deref(), Some("d2"));
+
+    let plugin = report
+        .plugins
+        .iter()
+        .find(|p| p.plugin_id == Some(1))
+        .unwrap();
+    assert_eq!(plugin.plugin_version.as_deref(), Some("1.2.3"));
+    assert_eq!(plugin.plugin_publication_date, Some(pub_date));
+    assert_eq!(plugin.plugin_modification_date, Some(mod_date));
+    assert_eq!(plugin.vuln_publication_date, Some(vuln_date));
+    assert_eq!(plugin.cvss_vector.as_deref(), Some("AV:N/AC:L/Au:N/C:P/I:P/A:P"));
+    assert_eq!(plugin.cvss_temporal_score.as_deref(), Some("7.2"));
+    assert_eq!(plugin.cvss_temporal_vector.as_deref(), Some("E:F/RL:OF/RC:C"));
+    assert_eq!(plugin.exploitability_ease.as_deref(), Some("Exploits are available"));
+    assert_eq!(plugin.synopsis.as_deref(), Some("syn"));
+    assert_eq!(plugin.exploit_framework_core.as_deref(), Some("core"));
+    assert_eq!(plugin.exploit_framework_metasploit.as_deref(), Some("metasploit"));
+    assert_eq!(plugin.exploit_framework_canvas.as_deref(), Some("canvas"));
+    assert_eq!(plugin.exploit_framework_exploithub.as_deref(), Some("exploithub"));
+    assert_eq!(plugin.exploit_framework_d2_elliot.as_deref(), Some("d2"));
+}
+
+#[test]
 fn maps_pluginid_zero_to_one() {
     let path = fs::canonicalize("tests/fixtures/plugin_id0.nessus").unwrap();
     let report = parse_file(&path).unwrap();

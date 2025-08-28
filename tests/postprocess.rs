@@ -128,3 +128,27 @@ fn adobe_air_rollup_creates_summary_item() {
     assert!(report.plugins.iter().any(|p| p.plugin_id == Some(-99994)));
     assert!(report.items.iter().any(|i| i.plugin_id == Some(-99994) && i.severity == Some(2)));
 }
+#[test]
+fn php_rollup_creates_summary_item() {
+    let mut item = Item::default();
+    item.plugin_id = Some(76281);
+    item.severity = Some(3);
+    let mut report = NessusReport {
+        items: vec![item],
+        ..NessusReport::default()
+    };
+    postprocess::process(&mut report, &HashSet::new(), &HashSet::new(), &Filters::default());
+    // original item downgraded
+    let orig = report.items.iter().find(|i| i.plugin_id == Some(76281)).unwrap();
+    assert_eq!(orig.severity, Some(-1));
+    assert_eq!(orig.real_severity, Some(3));
+    // rollup plugin and item inserted
+    assert!(report.plugins.iter().any(|p| p.plugin_id == Some(-99988)));
+    assert!(
+        report
+            .items
+            .iter()
+            .any(|i| i.plugin_id == Some(-99988) && i.severity == Some(3))
+    );
+}
+

@@ -10,6 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install runtime deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libfontconfig1
       - name: Install toolchain and llvm-tools
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -23,6 +27,7 @@ jobs:
           CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-Cinstrument-coverage -Clink-dead-code"
           LLVM_PROFILE_FILE: "cargo-test-%p-%m.profraw"
+          RUST_FONTCONFIG_DLOPEN: "1"
         run: |
           cargo build
           cargo test

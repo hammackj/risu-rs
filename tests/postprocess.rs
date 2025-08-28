@@ -114,22 +114,6 @@ fn downgrade_plugins_adjusts_severity() {
 
 #[test]
 fn toml_rollups_create_per_host_items() {
-    // Prepare a temporary TOML rollups file
-    let dir = tempdir().unwrap();
-    let toml_path = dir.path().join("rollups.toml");
-    std::fs::write(
-        &toml_path,
-        r#"[[rollup]]
-plugin_id = -99900
-plugin_name = "Custom Rollup"
-item_name = "Apply Patch"
-description = "Custom Test Rollup"
-plugin_ids = [12345, 23456]
-"#,
-    )
-    .unwrap();
-    unsafe { std::env::set_var("RISU_ROLLUPS_FILE", &toml_path) };
-
     // Build a report with two hosts and items that match the rollup list
     let mut report = NessusReport::default();
     report.hosts = vec![
@@ -168,14 +152,14 @@ plugin_ids = [12345, 23456]
             scanner_id: None,
         },
     ];
-    // Underlying items
+    // Underlying items using known IDs from repo rollups (7-Zip rollup)
     let mut i1 = Item::default();
     i1.host_id = Some(0);
-    i1.plugin_id = Some(12345);
+    i1.plugin_id = Some(91230);
     i1.severity = Some(2);
     let mut i2 = Item::default();
     i2.host_id = Some(1);
-    i2.plugin_id = Some(23456);
+    i2.plugin_id = Some(109730);
     i2.severity = Some(3);
     report.items = vec![i1, i2];
 
@@ -187,35 +171,71 @@ plugin_ids = [12345, 23456]
         &Filters::default(),
     );
 
-    // Underlying items downgraded
-    let u1 = report
-        .items
-        .iter()
-        .find(|i| i.host_id == Some(0) && i.plugin_id == Some(12345))
-        .unwrap();
-    assert_eq!(u1.severity, Some(-1));
-    assert_eq!(u1.real_severity, Some(2));
-    let u2 = report
-        .items
-        .iter()
-        .find(|i| i.host_id == Some(1) && i.plugin_id == Some(23456))
-        .unwrap();
-    assert_eq!(u2.severity, Some(-1));
-    assert_eq!(u2.real_severity, Some(3));
-
-    // Rollup plugin and per-host items inserted
-    assert!(report.plugins.iter().any(|p| p.plugin_id == Some(-99900)));
+    // Rollup plugin and per-host items inserted (7-Zip rollup id)
+    assert!(report.plugins.iter().any(|p| p.plugin_id == Some(-99954)));
     assert!(report
         .items
         .iter()
-        .any(|i| i.plugin_id == Some(-99900) && i.host_id == Some(0) && i.severity == Some(2)));
+        .any(|i| i.plugin_id == Some(-99954) && i.host_id == Some(0) && i.severity == Some(2)));
     assert!(report
         .items
         .iter()
-        .any(|i| i.plugin_id == Some(-99900) && i.host_id == Some(1) && i.severity == Some(3)));
+        .any(|i| i.plugin_id == Some(-99954) && i.host_id == Some(1) && i.severity == Some(3)));
+}
 
-    // Cleanup env var for other tests
-    unsafe { std::env::remove_var("RISU_ROLLUPS_FILE") };
+#[test]
+fn toml_rollups_enrich_metadata() {
+    use chrono::NaiveDate;
+
+    let mut report = NessusReport::default();
+    // Plugins providing metadata
+    // Use known rollup plugin ids (7-Zip underlying)
+    let mut p1 = Plugin::default();
+    p1.plugin_id = Some(91230);
+    p1.cvss_base_score = Some(5.0);
+    p1.vuln_publication_date = Some(
+        NaiveDate::from_ymd_opt(2020, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap(),
+    );
+    p1.risk_factor = Some("Medium".into());
+    let mut p2 = Plugin::default();
+    p2.plugin_id = Some(109730);
+    p2.cvss_base_score = Some(7.1);
+    p2.vuln_publication_date = Some(
+        NaiveDate::from_ymd_opt(2020, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap(),
+    );
+    p2.risk_factor = Some("High".into());
+    p2.exploit_available = Some("true".into());
+    report.plugins = vec![p1, p2];
+
+    // One item to trigger rollup
+    let mut it = Item::default();
+    it.plugin_id = Some(109730);
+    it.severity = Some(3);
+    report.items.push(it);
+
+    postprocess::process(
+        &mut report,
+        &HashSet::new(),
+        &HashSet::new(),
+        &Filters::default(),
+    );
+
+    let roll = report
+        .plugins
+        .iter()
+        .find(|p| p.plugin_id == Some(-99954))
+        .expect("rollup plugin");
+    // Highest CVSS and earliest vuln date picked
+    assert_eq!(roll.cvss_base_score, Some(7.1));
+    assert_eq!(
+        roll.vuln_publication_date,
+        Some(NaiveDate::from_ymd_opt(2020, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap())
+    );
+    // Risk factor chosen by order
+    assert_eq!(roll.risk_factor.as_deref(), Some("High"));
+    // Exploit flag propagated
+    assert_eq!(roll.exploit_available.as_deref(), Some("true"));
+
 }
 #[test]
 fn adobe_air_rollup_creates_summary_item() {

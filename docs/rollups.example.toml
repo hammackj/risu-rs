@@ -1,0 +1,18 @@
+[[rollup]]
+plugin_id = -99994
+plugin_name = "Missing the latest Adobe Air Patches"
+item_name = "Update to the latest Adobe Air"
+description = "Adobe Air Patch Rollup"
+plugin_ids = [56959, 52755, 53474]
+
+[[rollup]]
+plugin_id = -99997
+plugin_name = "Missing the latest Adobe Flash Player Patches"
+item_name = "Update to the latest Adobe Flash Player"
+description = "Adobe Flash Player Patch Rollup"
+plugin_ids = [100756, 11323, 11952]
+
+# Place this file at ./rollups.toml or ~/.risu/rollups.toml or set RISU_ROLLUPS_FILE.
+# At runtime, these TOML rollups run before built-in rollups. If the same
+# plugin_id is defined in TOML and built-ins, the built-in rollup is skipped.
+

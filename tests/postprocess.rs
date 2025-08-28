@@ -2,6 +2,7 @@ use risu_rs::models::{Host, Item, Plugin};
 use risu_rs::parser::{Filters, NessusReport};
 use risu_rs::postprocess;
 use std::collections::HashSet;
+use tempfile::tempdir;
 
 fn host(name: &str, ip: Option<&str>) -> Host {
     Host {
@@ -110,6 +111,112 @@ fn downgrade_plugins_adjusts_severity() {
     assert_eq!(report.items[0].severity, Some(0));
     assert_eq!(report.items[1].severity, Some(2));
 }
+
+#[test]
+fn toml_rollups_create_per_host_items() {
+    // Prepare a temporary TOML rollups file
+    let dir = tempdir().unwrap();
+    let toml_path = dir.path().join("rollups.toml");
+    std::fs::write(
+        &toml_path,
+        r#"[[rollup]]
+plugin_id = -99900
+plugin_name = "Custom Rollup"
+item_name = "Apply Patch"
+description = "Custom Test Rollup"
+plugin_ids = [12345, 23456]
+"#,
+    )
+    .unwrap();
+    unsafe { std::env::set_var("RISU_ROLLUPS_FILE", &toml_path) };
+
+    // Build a report with two hosts and items that match the rollup list
+    let mut report = NessusReport::default();
+    report.hosts = vec![
+        Host {
+            id: 0,
+            nessus_report_id: None,
+            name: Some("h1".into()),
+            os: None,
+            mac: None,
+            start: None,
+            end: None,
+            ip: Some("10.0.0.1".into()),
+            fqdn: None,
+            netbios: None,
+            notes: None,
+            risk_score: None,
+            user_id: None,
+            engagement_id: None,
+            scanner_id: None,
+        },
+        Host {
+            id: 1,
+            nessus_report_id: None,
+            name: Some("h2".into()),
+            os: None,
+            mac: None,
+            start: None,
+            end: None,
+            ip: Some("10.0.0.2".into()),
+            fqdn: None,
+            netbios: None,
+            notes: None,
+            risk_score: None,
+            user_id: None,
+            engagement_id: None,
+            scanner_id: None,
+        },
+    ];
+    // Underlying items
+    let mut i1 = Item::default();
+    i1.host_id = Some(0);
+    i1.plugin_id = Some(12345);
+    i1.severity = Some(2);
+    let mut i2 = Item::default();
+    i2.host_id = Some(1);
+    i2.plugin_id = Some(23456);
+    i2.severity = Some(3);
+    report.items = vec![i1, i2];
+
+    // Run postprocess with TOML rollups
+    postprocess::process(
+        &mut report,
+        &HashSet::new(),
+        &HashSet::new(),
+        &Filters::default(),
+    );
+
+    // Underlying items downgraded
+    let u1 = report
+        .items
+        .iter()
+        .find(|i| i.host_id == Some(0) && i.plugin_id == Some(12345))
+        .unwrap();
+    assert_eq!(u1.severity, Some(-1));
+    assert_eq!(u1.real_severity, Some(2));
+    let u2 = report
+        .items
+        .iter()
+        .find(|i| i.host_id == Some(1) && i.plugin_id == Some(23456))
+        .unwrap();
+    assert_eq!(u2.severity, Some(-1));
+    assert_eq!(u2.real_severity, Some(3));
+
+    // Rollup plugin and per-host items inserted
+    assert!(report.plugins.iter().any(|p| p.plugin_id == Some(-99900)));
+    assert!(report
+        .items
+        .iter()
+        .any(|i| i.plugin_id == Some(-99900) && i.host_id == Some(0) && i.severity == Some(2)));
+    assert!(report
+        .items
+        .iter()
+        .any(|i| i.plugin_id == Some(-99900) && i.host_id == Some(1) && i.severity == Some(3)));
+
+    // Cleanup env var for other tests
+    unsafe { std::env::remove_var("RISU_ROLLUPS_FILE") };
+}
 #[test]
 fn adobe_air_rollup_creates_summary_item() {
     let mut item = Item::default();
@@ -151,4 +258,3 @@ fn php_rollup_creates_summary_item() {
             .any(|i| i.plugin_id == Some(-99988) && i.severity == Some(3))
     );
 }
-

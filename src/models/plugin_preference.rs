@@ -14,6 +14,7 @@ pub struct PluginPreference {
     pub preference_name: Option<String>,
     pub preference_type: Option<String>,
     pub selected_value: Option<String>,
+    pub preference_values: Option<String>,
 }
 
 impl Default for PluginPreference {
@@ -26,6 +27,7 @@ impl Default for PluginPreference {
             preference_name: None,
             preference_type: None,
             selected_value: None,
+            preference_values: None,
         }
     }
 }

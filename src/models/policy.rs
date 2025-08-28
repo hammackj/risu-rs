@@ -11,6 +11,8 @@ pub struct Policy {
     pub nessus_report_id: Option<i32>,
     pub name: Option<String>,
     pub comments: Option<String>,
+    pub owner: Option<String>,
+    pub visibility: Option<String>,
 }
 
 impl Default for Policy {
@@ -20,6 +22,8 @@ impl Default for Policy {
             nessus_report_id: None,
             name: None,
             comments: None,
+            owner: None,
+            visibility: None,
         }
     }
 }

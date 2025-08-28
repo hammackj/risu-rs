@@ -100,6 +100,25 @@ Post-processing plugins allow adjusting a parsed report before rendering. They
 implement the [`PostProcess`](src/postprocess/mod.rs) trait and register using
 the `inventory` crate so they are executed in order after parsing.
 
+### Rollup plugins via TOML
+
+Rollup plugins are defined in a TOML file (no rebuild needed):
+
+- Search order: `RISU_ROLLUPS_FILE` → `./rollups.toml` → `~/.risu/rollups.toml`.
+- Example (see `docs/rollups.example.toml`):
+
+```
+[[rollup]]
+plugin_id = -99994
+plugin_name = "Missing the latest Adobe Air Patches"
+item_name = "Update to the latest Adobe Air"
+description = "Adobe Air Patch Rollup"
+plugin_ids = [56959, 52755, 53474]
+```
+
+If a TOML file is present, rollups are loaded from it. Built-in rollups have
+been removed to keep changes data-driven.
+
 ## Release workflow
 
 Maintainers can use the provided Makefile to cut releases:
@@ -134,4 +153,3 @@ sha512sum -c checksum/risu-rs.sha512
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on building with the Rust toolchain and submitting patches.
 
 Please review our [Code of Conduct](CODE_OF_CONDUCT.markdown) before participating.
-

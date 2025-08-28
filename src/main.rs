@@ -121,6 +121,7 @@ enum Commands {
         /// Run post-processing plugins on the parsed data
         #[arg(long)]
         post_process: bool,
+        // Built-in rollups have been removed; TOML rollups are used instead.
         /// Renderer to use (pdf, csv, rtf, nil). Use `nil` to discard output.
         #[arg(long, value_parser = ["pdf", "csv", "rtf", "nil"])]
         renderer: Option<String>,

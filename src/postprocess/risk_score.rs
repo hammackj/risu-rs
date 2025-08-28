@@ -55,10 +55,16 @@ impl PostProcess for RiskScore {
                 }
             }
         }
-        // Calculate host risk scores (aggregate all item scores)
-        let total: i32 = report.items.iter().filter_map(|i| i.risk_score).sum();
+        // Calculate host risk scores (aggregate per-host item scores)
+        let host_count = report.hosts.len();
         for host in &mut report.hosts {
-            host.risk_score = Some(total);
+            let sum: i32 = report
+                .items
+                .iter()
+                .filter(|i| i.host_id == Some(host.id) || (i.host_id.is_none() && host_count <= 1))
+                .filter_map(|i| i.risk_score)
+                .sum();
+            host.risk_score = Some(sum);
         }
     }
 }

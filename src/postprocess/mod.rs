@@ -60,6 +60,8 @@ impl Registry {
         );
     }
 
+    // No alternative run modes needed now that rollups are TOML-only.
+
     /// Display all registered plugin names.
     pub fn display(&self) {
         for plugin in &self.plugins {
@@ -102,6 +104,6 @@ mod downgrade_plugins;
 mod fix_ips;
 mod normalize_plugin_names;
 mod risk_score;
-mod rollups;
+mod rollups_toml;
 mod root_cause;
 mod sort_hosts;

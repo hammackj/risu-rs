@@ -261,6 +261,84 @@ fn parses_policy_block() {
 }
 
 #[test]
+fn parses_policy_owner_visibility_and_preference_values() {
+    use tempfile::tempdir;
+    let xml = r#"<NessusClientData_v2>
+<Policy>
+  <policyName>p</policyName>
+  <policyComments>c</policyComments>
+  <policyOwner>owner1</policyOwner>
+  <visibility>shared</visibility>
+  <PluginsPreferences>
+    <item>
+      <pluginId>100</pluginId>
+      <fullname>Full</fullname>
+      <preferenceName>PrefName</preferenceName>
+      <preferenceType>radio</preferenceType>
+      <selectedValue>yes</selectedValue>
+      <preferenceValues>a;b;c</preferenceValues>
+    </item>
+  </PluginsPreferences>
+</Policy>
+<Report><ReportHost name='h'></ReportHost></Report>
+</NessusClientData_v2>"#;
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("policy_extra.nessus");
+    std::fs::write(&path, xml).unwrap();
+
+    let report = parse_file(&path).unwrap();
+    assert_eq!(report.policies.len(), 1);
+    let pol = &report.policies[0];
+    assert_eq!(pol.owner.as_deref(), Some("owner1"));
+    assert_eq!(pol.visibility.as_deref(), Some("shared"));
+    assert_eq!(report.plugin_preferences.len(), 1);
+    let pref = &report.plugin_preferences[0];
+    assert_eq!(pref.preference_values.as_deref(), Some("a;b;c"));
+}
+
+#[test]
+fn parses_multiple_plugin_preferences_with_values() {
+    use tempfile::tempdir;
+    let xml = r#"<NessusClientData_v2>
+<Policy>
+  <PluginsPreferences>
+    <item>
+      <pluginId>200</pluginId>
+      <fullname>First</fullname>
+      <preferenceName>Alpha</preferenceName>
+      <preferenceType>enum</preferenceType>
+      <selectedValue>a</selectedValue>
+      <preferenceValues>a;b;c</preferenceValues>
+    </item>
+    <item>
+      <pluginId>201</pluginId>
+      <fullname>Second</fullname>
+      <preferenceName>Beta</preferenceName>
+      <preferenceType>checkbox</preferenceType>
+      <selectedValue>true</selectedValue>
+      <preferenceValues>true;false</preferenceValues>
+    </item>
+  </PluginsPreferences>
+</Policy>
+<Report><ReportHost name='h'></ReportHost></Report>
+</NessusClientData_v2>"#;
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("prefs_multi.nessus");
+    std::fs::write(&path, xml).unwrap();
+
+    let report = parse_file(&path).unwrap();
+    assert_eq!(report.plugin_preferences.len(), 2);
+    let p0 = &report.plugin_preferences[0];
+    let p1 = &report.plugin_preferences[1];
+    assert_eq!(p0.plugin_id, Some(200));
+    assert_eq!(p0.preference_values.as_deref(), Some("a;b;c"));
+    assert_eq!(p0.selected_value.as_deref(), Some("a"));
+    assert_eq!(p1.plugin_id, Some(201));
+    assert_eq!(p1.preference_values.as_deref(), Some("true;false"));
+    assert_eq!(p1.selected_value.as_deref(), Some("true"));
+}
+
+#[test]
 fn parses_nessus_sqlite_db() {
     use diesel::prelude::*;
     use diesel_migrations::MigrationHarness;

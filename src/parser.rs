@@ -1477,7 +1477,7 @@ fn parse_policy<R: std::io::BufRead>(
     loop {
         match reader.read_event_into(buf)? {
             Event::Start(e) => match e.name().as_ref() {
-                b"policyName" | b"policyComments" => {
+                b"policyName" | b"policyComments" | b"policyOwner" | b"visibility" => {
                     current_tag = Some(String::from_utf8_lossy(e.name().as_ref()).to_string());
                 }
                 b"PluginItem" => current_plugin = Some(PolicyPlugin::default()),
@@ -1490,7 +1490,7 @@ fn parse_policy<R: std::io::BufRead>(
                 }
                 b"item" => current_pref = Some(PluginPreference::default()),
                 b"pluginId" | b"fullname" | b"preferenceName" | b"preferenceType"
-                | b"selectedValue" => {
+                | b"selectedValue" | b"preferenceValues" => {
                     current_tag = Some(String::from_utf8_lossy(e.name().as_ref()).to_string());
                 }
                 b"preference" => current_server_pref = Some(ServerPreference::default()),
@@ -1522,7 +1522,8 @@ fn parse_policy<R: std::io::BufRead>(
                             "fullname" => pref.fullname = Some(txt),
                             "preferenceName" => pref.preference_name = Some(txt),
                             "preferenceType" => pref.preference_type = Some(txt),
-                            "selectedValue" => pref.selected_value = Some(txt),
+                            "selectedValue" => pref.selected_value = Some(txt.clone()),
+                            "preferenceValues" => pref.preference_values = Some(txt),
                             _ => {}
                         }
                     } else if let Some(sp) = &mut current_server_pref {
@@ -1535,15 +1536,17 @@ fn parse_policy<R: std::io::BufRead>(
                         match tag.as_str() {
                             "policyName" => policy.name = Some(txt),
                             "policyComments" => policy.comments = Some(txt),
+                            "policyOwner" => policy.owner = Some(txt),
+                            "visibility" => policy.visibility = Some(txt),
                             _ => {}
                         }
                     }
                 }
             }
             Event::End(e) => match e.name().as_ref() {
-                b"policyName" | b"policyComments" | b"PluginID" | b"PluginName"
+                b"policyName" | b"policyComments" | b"policyOwner" | b"visibility" | b"PluginID" | b"PluginName"
                 | b"PluginFamily" | b"Status" | b"FamilyName" | b"pluginId" | b"fullname"
-                | b"preferenceName" | b"preferenceType" | b"selectedValue" | b"name" | b"value" => {
+                | b"preferenceName" | b"preferenceType" | b"selectedValue" | b"preferenceValues" | b"name" | b"value" => {
                     current_tag = None
                 }
                 b"PluginItem" => {

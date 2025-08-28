@@ -1,0 +1,41 @@
+name: Coverage
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  grcov:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain and llvm-tools
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - name: Install grcov
+        run: |
+          curl -L https://github.com/mozilla/grcov/releases/download/v0.8.18/grcov-x86_64-unknown-linux-gnu.tar.bz2 | tar -xj
+          sudo mv grcov /usr/local/bin/
+      - name: Run tests with coverage flags
+        env:
+          CARGO_INCREMENTAL: 0
+          RUSTFLAGS: "-Cinstrument-coverage -Clink-dead-code"
+          LLVM_PROFILE_FILE: "cargo-test-%p-%m.profraw"
+        run: |
+          cargo build
+          cargo test
+      - name: Generate lcov report
+        run: |
+          grcov . -s . --binary-path target/debug/ -t lcov --branch --ignore-not-existing --ignore "/*" -o lcov.info
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lcov.info
+          path: lcov.info
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: lcov.info
+          fail_ci_if_error: true

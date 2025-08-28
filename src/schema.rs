@@ -43,6 +43,8 @@ diesel::table! {
         nessus_report_id -> Nullable<Integer>,
         name -> Nullable<Text>,
         comments -> Nullable<Text>,
+        owner -> Nullable<Text>,
+        visibility -> Nullable<Text>,
     }
 }
 
@@ -75,6 +77,7 @@ diesel::table! {
         preference_name -> Nullable<Text>,
         preference_type -> Nullable<Text>,
         selected_value -> Nullable<Text>,
+        preference_values -> Nullable<Text>,
     }
 }
 

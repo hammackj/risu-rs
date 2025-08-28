@@ -128,3 +128,10 @@ sha512sum -c checksum/risu-rs.sha512
    ```bash
    ./scripts/console_here
    ```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on building with the Rust toolchain and submitting patches.
+
+Please review our [Code of Conduct](CODE_OF_CONDUCT.markdown) before participating.
+

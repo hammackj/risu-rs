@@ -13,7 +13,7 @@ jobs:
       - name: Install runtime deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libfontconfig1 lcov
+          sudo apt-get install -y --no-install-recommends libfontconfig1 lcov binutils
       - name: Install toolchain and llvm-tools
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -34,7 +34,7 @@ jobs:
       - name: Generate lcov report
         run: |
           grcov . -s . --binary-path target/debug/ -t lcov --branch --ignore-not-existing --ignore "/*" -o lcov.info
-          genhtml -o coverage --branch-coverage --demangle-cpp lcov.info
+          genhtml -o coverage --branch-coverage lcov.info
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:

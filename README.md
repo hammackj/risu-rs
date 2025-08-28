@@ -1,5 +1,7 @@
 # risu-rs
 
+[![CI](https://github.com/example/risu-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/example/risu-rs/actions/workflows/ci.yml)
+
 A Rust rewrite of the Risu reporting utilities.
 
 ## Documentation

@@ -469,6 +469,7 @@ fn parse_nessus(path: &Path, scanner_name: &str) -> Result<NessusReport, crate::
 
     let mut report = NessusReport::default();
     let mut current_host: Option<Host> = None;
+    let mut current_host_index: Option<i32> = None;
     let mut current_tag: Option<String> = None;
     let mut current_patches: Vec<Patch> = Vec::new();
     let mut current_patch: Option<Patch> = None;
@@ -543,6 +544,7 @@ fn parse_nessus(path: &Path, scanner_name: &str) -> Result<NessusReport, crate::
                         }
                     }
                     current_host = Some(host);
+                    current_host_index = Some(report.hosts.len() as i32);
                     current_patches.clear();
                     current_host_properties.clear();
                 }
@@ -629,6 +631,10 @@ fn parse_nessus(path: &Path, scanner_name: &str) -> Result<NessusReport, crate::
                                 ));
                             }
                         }
+                    }
+                    // Associate item with the current host (by in-memory index)
+                    if let Some(hidx) = current_host_index {
+                        item.host_id = Some(hidx);
                     }
                     report.items.push(item);
                     current_item_index = Some((report.items.len() - 1) as i32);
@@ -1339,6 +1345,7 @@ fn parse_nessus(path: &Path, scanner_name: &str) -> Result<NessusReport, crate::
                         if let Some(h) = report.hosts.get_mut(host_index as usize) {
                             h.id = host_index;
                         }
+                        current_host_index = None;
                         for mut patch in current_patches.drain(..) {
                             patch.host_id = Some(host_index);
                             report.patches.push(patch);
@@ -1351,6 +1358,8 @@ fn parse_nessus(path: &Path, scanner_name: &str) -> Result<NessusReport, crate::
                             sd.host_id = Some(host_index);
                             report.service_descriptions.push(sd);
                         }
+                        // Helpful when running with --log-level debug
+                        debug!("Completed host {} (total: {})", host_index, report.hosts.len());
                     }
                 }
                 b"attachment" => {

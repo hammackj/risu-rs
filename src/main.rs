@@ -24,6 +24,7 @@ mod renderers;
 use renderers as renderer;
 mod analysis;
 mod schema;
+mod persist;
 mod template;
 mod templates;
 mod version;
@@ -480,6 +481,19 @@ fn run() -> Result<(), error::Error> {
                 postprocess::process(&mut report, &whitelist, &blacklist, &filters);
             }
 
+            // Provide immediate feedback that parsing completed successfully.
+            println!(
+                "Parsed {} hosts, {} items, {} plugins, {} attachments",
+                report.hosts.len(),
+                report.items.len(),
+                report.plugins.len(),
+                report.attachments.len()
+            );
+
+            // Persist parsed data into SQLite before rendering.
+            let mut conn = SqliteConnection::establish(&cfg.database_url)?;
+            persist::to_sqlite(&mut conn, &report)?;
+
             // Populate report metadata from CLI or configuration
             report.report.title = report_title.or(cfg.report_title.clone());
             report.report.author = report_author.or(cfg.report_author.clone());
@@ -555,7 +569,6 @@ fn run() -> Result<(), error::Error> {
                 .as_ref()
                 .map(|p| std::path::PathBuf::from(p).join(&output))
                 .unwrap_or(output);
-            let mut conn = SqliteConnection::establish(&cfg.database_url)?;
             let mut templater =
                 template::templater::Templater::new(tmpl_name, &mut conn, output, manager);
             templater

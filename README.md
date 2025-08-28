@@ -1,6 +1,7 @@
 # risu-rs
 
-[![CI](https://github.com/example/risu-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/example/risu-rs/actions/workflows/ci.yml)
+[![CI](https://github.com/hammackj/risu-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/hammackj/risu-rs/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-HTML-blue.svg)](https://hammackj.github.io/risu-rs/coverage/)
 
 A Rust rewrite of the Risu reporting utilities.
 

@@ -48,6 +48,7 @@ use chrono::{Duration, Utc};
 use clap::{Parser, Subcommand};
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
+use diesel_migrations::MigrationHarness;
 use ipnet::IpNet;
 use std::collections::{HashMap, HashSet};
 use tracing::error;
@@ -108,6 +109,21 @@ enum Commands {
     Parse {
         /// File to parse
         file: std::path::PathBuf,
+        /// Output file for generated document
+        #[arg(short, long, default_value = "output.pdf")]
+        output: std::path::PathBuf,
+        /// Template to use for rendering
+        #[arg(short, long, default_value = "simple")]
+        template: String,
+        /// Renderer to use (pdf, csv, rtf, typst, nil)
+        #[arg(long, value_parser = ["pdf", "csv", "rtf", "typst", "nil"])]
+        renderer: Option<String>,
+        /// Template-specific arguments as `key=value` pairs
+        #[arg(long = "template-arg", value_name = "key=value", value_parser = parse_key_val::<String, String>)]
+        template_args: Vec<(String, String)>,
+        /// Only include findings older than the specified number of days
+        #[arg(long = "older-than", value_name = "days")]
+        older_than: Option<i64>,
         /// Run post-processing plugins on the parsed data
         #[arg(long)]
         post_process: bool,
@@ -132,7 +148,7 @@ enum Commands {
         #[arg(short, long, default_value = "output.pdf")]
         output: std::path::PathBuf,
         /// Renderer to use (pdf, csv, rtf, nil)
-        #[arg(long, value_parser = ["pdf", "csv", "rtf", "nil"])]
+        #[arg(long, value_parser = ["pdf", "csv", "rtf", "typst", "nil"])]
         renderer: Option<String>,
         /// Template-specific arguments as `key=value` pairs
         #[arg(long = "template-arg", value_name = "key=value", value_parser = parse_key_val::<String, String>)]
@@ -166,7 +182,7 @@ enum Commands {
         #[arg(long)]
         author: Option<String>,
         /// Renderer type (pdf, csv, rtf, nil)
-        #[arg(long, value_parser = ["pdf", "csv", "rtf", "nil"])]
+        #[arg(long, value_parser = ["pdf", "csv", "rtf", "typst", "nil"])]
         renderer: Option<String>,
     },
 }
@@ -358,7 +374,15 @@ fn run() -> Result<(), error::Error> {
     }
 
     match cli.command {
-        Some(Commands::Parse { file, post_process }) => {
+        Some(Commands::Parse {
+            file,
+            output,
+            template: tmpl_name,
+            renderer: renderer_opt,
+            template_args,
+            older_than,
+            post_process,
+        }) => {
             let blacklist: HashSet<i32> = cli.blacklist.iter().cloned().collect();
             let whitelist: HashSet<i32> = cli.whitelist.iter().cloned().collect();
             let mut report = parser::parse_file(&file)?;
@@ -373,7 +397,6 @@ fn run() -> Result<(), error::Error> {
                 );
             }
 
-            // Provide immediate feedback that parsing completed successfully.
             println!(
                 "Parsed {} hosts, {} items, {} plugins, {} attachments",
                 report.hosts.len(),
@@ -382,9 +405,80 @@ fn run() -> Result<(), error::Error> {
                 report.attachments.len()
             );
 
-            // Persist parsed data into SQLite.
-            let mut conn = SqliteConnection::establish(&cfg.database_url)?;
+            let mut conn = SqliteConnection::establish(":memory:")?;
+            conn
+                .run_pending_migrations(migrate::MIGRATIONS)
+                .map_err(error::Error::Migration)?;
             persist::to_sqlite(&mut conn, &report)?;
+
+            let paths = cfg
+                .template_paths
+                .iter()
+                .map(std::path::PathBuf::from)
+                .collect();
+            let mut manager = template::TemplateManager::new(paths);
+            manager.register(Box::new(template::SimpleTemplate));
+            manager.register(Box::new(templates::TemplateTemplate));
+            manager.register(Box::new(templates::AssetsTemplate));
+            manager.register(Box::new(templates::HostSummaryTemplate));
+            manager.register(Box::new(templates::MSPatchSummaryTemplate));
+            manager.register(Box::new(templates::PCIComplianceTemplate));
+            manager.register(Box::new(templates::StigFindingsSummaryTemplate));
+            manager.register(Box::new(templates::StigDetailedTemplate));
+            manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
+            manager.register(Box::new(templates::SslSummaryTemplate));
+            manager.register(Box::new(templates::AuthenticationSummaryTemplate));
+            manager.register(Box::new(templates::RemoteLocalSummaryTemplate));
+            manager.register(Box::new(templates::CoverSheetTemplate));
+            manager.register(Box::new(templates::ExecSummaryTemplate));
+            manager.register(Box::new(templates::ExecutiveSummaryDetailedTemplate));
+            manager.register(Box::new(templates::ExploitablitySummaryTemplate));
+            manager.register(Box::new(templates::FailedAuditsTemplate));
+            manager.register(Box::new(templates::GraphsTemplate));
+            manager.register(Box::new(templates::PluginSummaryTemplate));
+            manager.register(Box::new(templates::RollupSummaryTemplate));
+            manager.register(Box::new(templates::TalkingPointsTemplate));
+            manager.register(Box::new(templates::TechnicalFindingsTemplate));
+            manager.register(Box::new(templates::MSUpdateSummaryTemplate));
+            manager.register(Box::new(templates::NotableTemplate));
+            manager.register(Box::new(templates::NotableDetailedTemplate));
+            manager.register(Box::new(templates::FindingStatisticsTemplate));
+            manager.register(Box::new(templates::HostFindingsCsvTemplate));
+            manager.register(Box::new(templates::HostFindingsCsvOlderThanTemplate));
+            manager.register(Box::new(templates::FixListTemplate));
+            manager.register(Box::new(templates::Top25Template));
+            manager.register(Box::new(templates::SansTopTemplate));
+            manager.register(Box::new(templates::FindingsHostTemplate));
+            manager.register(Box::new(templates::FindingsSummaryTemplate));
+            manager.register(Box::new(templates::FindingsSummaryWithPluginIdTemplate));
+            manager.register(Box::new(templates::MaliciousProcessDetectionTemplate));
+            manager.register(Box::new(templates::MissingRootCausesTemplate));
+            manager.register(Box::new(templates::MicrosoftWindowsUnquotedServicePathEnumerationTemplate));
+            manager.register(Box::new(templates::MSWSUSFindingsTemplate));
+            manager.register(Box::new(templates::ServiceInventoryTemplate));
+            manager.register(Box::new(templates::UnsupportedOsTemplate));
+            manager.register(Box::new(templates::VirtualMachineSummaryTemplate));
+            manager.load_templates().map_err(error::Error::Template)?;
+
+            let mut template_args_map: HashMap<String, String> = cfg
+                .template_settings
+                .get(&tmpl_name)
+                .cloned()
+                .unwrap_or_default();
+            template_args_map.extend(template_args.into_iter());
+            if let Some(days) = older_than {
+                let cutoff = (Utc::now() - Duration::days(days)).naive_utc();
+                template_args_map.insert(
+                    "cutoff_date".to_string(),
+                    cutoff.format("%Y-%m-%d %H:%M:%S").to_string(),
+                );
+            }
+
+            let mut templater =
+                template::templater::Templater::new(tmpl_name, &mut conn, output, manager);
+            templater
+                .generate(&report, renderer_opt.as_deref(), &template_args_map)
+                .map_err(error::Error::Template)?;
         }
         Some(Commands::PluginIndex { dir }) => {
             plugin_index::run(&dir)?;

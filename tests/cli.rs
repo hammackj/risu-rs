@@ -76,6 +76,41 @@ fn parse_with_nil_renderer_creates_no_file() {
 }
 
 #[test]
+fn parse_with_typst_renderer_writes_file() {
+    let tmp = tempdir().unwrap();
+    let sample = fs::canonicalize("tests/fixtures/sample.nessus").unwrap();
+
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .args(["--no-banner", "--create-config-file"])
+        .current_dir(&tmp)
+        .assert()
+        .success();
+    assert!(tmp.path().join("config.yml").exists());
+
+    let output = tmp.path().join("out.typ");
+    Command::cargo_bin("risu-rs")
+        .unwrap()
+        .current_dir(&tmp)
+        .args([
+            "--no-banner",
+            "--config-file",
+            "config.yml",
+            "parse",
+            sample.to_str().unwrap(),
+            "-o",
+            output.to_str().unwrap(),
+            "-t",
+            "simple",
+            "--renderer",
+            "typst",
+        ])
+        .assert()
+        .success();
+    assert!(output.exists());
+}
+
+#[test]
 fn create_template_writes_skeleton() {
     let tmp = tempdir().unwrap();
     Command::cargo_bin("risu-rs")

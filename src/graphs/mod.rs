@@ -61,7 +61,8 @@ pub fn top_vulnerabilities(
 
     chart
         .configure_mesh()
-        .disable_mesh()
+        .x_desc("Vulnerability")
+        .y_desc("Occurrences")
         .x_labels(labels.len())
         .x_label_formatter(&|x| {
             let idx = *x as usize;
@@ -76,6 +77,7 @@ pub fn top_vulnerabilities(
                 String::new()
             }
         })
+        .light_line_style(&RGBColor(220, 220, 220))
         .draw()?;
 
     chart.draw_series(data.iter().enumerate().map(|(i, (_, c))| {

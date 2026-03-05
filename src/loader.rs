@@ -162,11 +162,8 @@ pub fn load_report(
     }
 
     // Load references and remap plugin_id (db->external) and item_id (db->index)
-    let mut references: Vec<Reference> = if host_db_ids.is_empty() {
-        refs::nessus_references.order(refs::id.asc()).load::<Reference>(conn)?
-    } else {
-        refs::nessus_references.order(refs::id.asc()).load::<Reference>(conn)?
-    };
+    let mut references: Vec<Reference> =
+        refs::nessus_references.order(refs::id.asc()).load::<Reference>(conn)?;
     for r in &mut references {
         if let Some(db_iid) = r.item_id {
             if let Some(new_idx) = item_index_map.get(&db_iid) {

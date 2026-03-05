@@ -123,7 +123,7 @@ const VALID_HOST_PROPERTIES: &[&str] = &[
 
 lazy_static! {
     static ref PATCH_RE: Regex = Regex::new("(?i)ms\\d{2}-\\d+").unwrap();
-    static ref TRACEROUTE_HOP_RE: Regex = Regex::new(r"^traceroute_hop_\\d+$").unwrap();
+    static ref TRACEROUTE_HOP_RE: Regex = Regex::new(r"^traceroute-hop-\d+$").unwrap();
     static ref PCIDSS_RE: Regex = Regex::new(r"^pcidss:.*$").unwrap();
     static ref PATCH_SUMMARY_CVE_NUM_RE: Regex = Regex::new(r"^patch-summary-cve-num$").unwrap();
     static ref PATCH_SUMMARY_CVES_RE: Regex = Regex::new(r"^patch-summary-cves$").unwrap();
@@ -526,6 +526,19 @@ fn parse_nessus(path: &Path, scanner_name: &str) -> Result<NessusReport, crate::
                         mut server_preferences,
                     ) = parse_policy(&mut reader, &mut buf)?;
                     report.policies.push(policy);
+                    let policy_index = Some((report.policies.len() - 1) as i32);
+                    for pp in &mut policy_plugins {
+                        pp.policy_id = policy_index;
+                    }
+                    for fs in &mut family_selections {
+                        fs.policy_id = policy_index;
+                    }
+                    for pf in &mut plugin_preferences {
+                        pf.policy_id = policy_index;
+                    }
+                    for sp in &mut server_preferences {
+                        sp.policy_id = policy_index;
+                    }
                     report.policy_plugins.append(&mut policy_plugins);
                     report.family_selections.append(&mut family_selections);
                     report.plugin_preferences.append(&mut plugin_preferences);

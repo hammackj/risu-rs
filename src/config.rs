@@ -144,7 +144,13 @@ pub fn load_config(path: &Path) -> Result<Config, crate::error::Error> {
         )));
     }
     let raw = fs::read_to_string(path)?;
-    let mut cfg: Config = serde_yaml::from_str(&raw).unwrap_or_default();
+    let mut cfg: Config = match serde_yaml::from_str(&raw) {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!(path = %path.display(), error = %e, "failed to parse config; using defaults");
+            Config::default()
+        }
+    };
 
     if cfg.database_url.trim().is_empty() {
         cfg.database_url = default_database_url();

@@ -18,7 +18,9 @@ pub fn print(config_path: &Path) {
 
     // Database backend information
     let cfg = crate::config::load_config(config_path).unwrap_or_default();
-    println!("database {}", cfg.database_url);
+    // Redact credentials from database URL before printing
+    let redacted_url = redact_database_url(&cfg.database_url);
+    println!("database {}", redacted_url);
     println!("sqlite {}", rusqlite::version());
 
     // Recent log files in the current directory
@@ -37,4 +39,20 @@ pub fn print(config_path: &Path) {
     }
 
     println!("\nInclude the above output when filing an issue.");
+}
+
+/// Redact password from database URLs like `postgres://user:pass@host/db`.
+fn redact_database_url(url: &str) -> String {
+    if let Some(scheme_end) = url.find("://") {
+        let after_scheme = &url[scheme_end + 3..];
+        if let Some(at_pos) = after_scheme.find('@') {
+            let userinfo = &after_scheme[..at_pos];
+            if let Some(colon) = userinfo.find(':') {
+                let user = &userinfo[..colon];
+                let rest = &after_scheme[at_pos..];
+                return format!("{}://{}:***{}", &url[..scheme_end], user, rest);
+            }
+        }
+    }
+    url.to_string()
 }

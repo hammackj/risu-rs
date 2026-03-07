@@ -3,8 +3,22 @@ use std::path::PathBuf;
 
 use crate::error::Error;
 
+/// Validate that a scaffold input contains only safe characters to prevent
+/// code injection when interpolated into generated Rust source.
+fn validate_scaffold_input(value: &str, field: &str) -> Result<(), Error> {
+    if value.chars().any(|c| matches!(c, '"' | '\\' | '{' | '}' | '\n' | '\r')) {
+        return Err(Error::Config(format!(
+            "{field} contains unsafe characters (quotes, braces, backslashes, or newlines)"
+        )));
+    }
+    Ok(())
+}
+
 /// Generate a template skeleton source file under the user's template directory.
 pub fn scaffold(name: &str, author: &str, renderer: &str) -> Result<(), Error> {
+    validate_scaffold_input(name, "template name")?;
+    validate_scaffold_input(author, "author")?;
+    validate_scaffold_input(renderer, "renderer")?;
     let dir: PathBuf = std::env::var_os("HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."))

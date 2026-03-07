@@ -300,7 +300,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
                     .execute(conn)?;
                 diesel::sql_query("SELECT last_insert_rowid() AS id")
                     .get_result::<LastId>(conn)?
-                    .id as i32
+                    .id.try_into().map_err(|_| diesel::result::Error::RollbackTransaction)?
             }
         };
 
@@ -317,7 +317,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
             .execute(conn)?;
         let report_id = diesel::sql_query("SELECT last_insert_rowid() AS id")
             .get_result::<LastId>(conn)?
-            .id as i32;
+            .id.try_into().map_err(|_| diesel::result::Error::RollbackTransaction)?;
 
         // 3) Hosts (batch insert, then fetch ids in order)
         let new_hosts: Vec<NewHost> = report
@@ -469,7 +469,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
                         .execute(conn)?;
                     let id = diesel::sql_query("SELECT last_insert_rowid() AS id")
                         .get_result::<LastId>(conn)?
-                        .id as i32;
+                        .id.try_into().map_err(|_| diesel::result::Error::RollbackTransaction)?;
                     attachment_id_map[idx] = Some(id);
                 }
             }
@@ -536,7 +536,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
                 .execute(conn)?;
             let id = diesel::sql_query("SELECT last_insert_rowid() AS id")
                 .get_result::<LastId>(conn)?
-                .id as i32;
+                .id.try_into().map_err(|_| diesel::result::Error::RollbackTransaction)?;
             item_id_map[idx] = Some(id);
         }
 

@@ -1383,7 +1383,12 @@ fn parse_nessus(path: &Path, scanner_name: &str) -> Result<NessusReport, crate::
                         let mut hasher = Sha256::new();
                         hasher.update(&bytes);
                         let hash = format!("{:x}", hasher.finalize());
-                        let file_path = base_dir.join(&att.name);
+                        // Sanitize attachment name to prevent path traversal
+                        let safe_name = Path::new(&att.name)
+                            .file_name()
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_else(|| format!("attachment_{}", hash));
+                        let file_path = base_dir.join(&safe_name);
                         fs::write(&file_path, &bytes)?;
                         let mut attachment = Attachment::default();
                         attachment.name = Some(att.name);

@@ -14,6 +14,14 @@ struct LastId {
     id: i64,
 }
 
+impl LastId {
+    fn as_i32(self) -> Result<i32, diesel::result::Error> {
+        self.id
+            .try_into()
+            .map_err(|_| diesel::result::Error::RollbackTransaction)
+    }
+}
+
 #[derive(Insertable)]
 #[diesel(table_name = schema::nessus_reports)]
 struct NewReport<'a> {
@@ -300,7 +308,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
                     .execute(conn)?;
                 diesel::sql_query("SELECT last_insert_rowid() AS id")
                     .get_result::<LastId>(conn)?
-                    .id.try_into().map_err(|_| diesel::result::Error::RollbackTransaction)?
+                    .as_i32()?
             }
         };
 
@@ -317,7 +325,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
             .execute(conn)?;
         let report_id = diesel::sql_query("SELECT last_insert_rowid() AS id")
             .get_result::<LastId>(conn)?
-            .id.try_into().map_err(|_| diesel::result::Error::RollbackTransaction)?;
+            .as_i32()?;
 
         // 3) Hosts (batch insert, then fetch ids in order)
         let new_hosts: Vec<NewHost> = report
@@ -469,7 +477,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
                         .execute(conn)?;
                     let id = diesel::sql_query("SELECT last_insert_rowid() AS id")
                         .get_result::<LastId>(conn)?
-                        .id.try_into().map_err(|_| diesel::result::Error::RollbackTransaction)?;
+                        .as_i32()?;
                     attachment_id_map[idx] = Some(id);
                 }
             }
@@ -536,7 +544,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
                 .execute(conn)?;
             let id = diesel::sql_query("SELECT last_insert_rowid() AS id")
                 .get_result::<LastId>(conn)?
-                .id.try_into().map_err(|_| diesel::result::Error::RollbackTransaction)?;
+                .as_i32()?;
             item_id_map[idx] = Some(id);
         }
 

@@ -6,9 +6,13 @@ use crate::error::Error;
 /// Validate that a scaffold input contains only safe characters to prevent
 /// code injection when interpolated into generated Rust source.
 fn validate_scaffold_input(value: &str, field: &str) -> Result<(), Error> {
-    if value.chars().any(|c| matches!(c, '"' | '\\' | '{' | '}' | '\n' | '\r')) {
+    if value.is_empty()
+        || !value
+            .chars()
+            .all(|c| c.is_alphanumeric() || matches!(c, '_' | '-' | '.' | ' '))
+    {
         return Err(Error::Config(format!(
-            "{field} contains unsafe characters (quotes, braces, backslashes, or newlines)"
+            "{field} must contain only alphanumeric characters, underscores, hyphens, dots, or spaces"
         )));
     }
     Ok(())

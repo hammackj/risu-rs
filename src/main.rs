@@ -281,48 +281,7 @@ fn run() -> Result<(), error::Error> {
             .map(std::path::PathBuf::from)
             .collect();
         let mut manager = template::TemplateManager::new(paths);
-        manager.register(Box::new(template::SimpleTemplate));
-        manager.register(Box::new(templates::TemplateTemplate));
-        manager.register(Box::new(templates::AssetsTemplate));
-        manager.register(Box::new(templates::HostSummaryTemplate));
-        manager.register(Box::new(templates::MSPatchSummaryTemplate));
-        manager.register(Box::new(templates::PCIComplianceTemplate));
-        manager.register(Box::new(templates::StigFindingsSummaryTemplate));
-        manager.register(Box::new(templates::StigDetailedTemplate));
-        manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
-        manager.register(Box::new(templates::SslSummaryTemplate));
-        manager.register(Box::new(templates::AuthenticationSummaryTemplate));
-        manager.register(Box::new(templates::RemoteLocalSummaryTemplate));
-        manager.register(Box::new(templates::CoverSheetTemplate));
-        manager.register(Box::new(templates::ExecSummaryTemplate));
-        manager.register(Box::new(templates::ExecutiveSummaryDetailedTemplate));
-        manager.register(Box::new(templates::ExploitablitySummaryTemplate));
-        manager.register(Box::new(templates::FailedAuditsTemplate));
-        manager.register(Box::new(templates::GraphsTemplate));
-        manager.register(Box::new(templates::PluginSummaryTemplate));
-        manager.register(Box::new(templates::RollupSummaryTemplate));
-        manager.register(Box::new(templates::TalkingPointsTemplate));
-        manager.register(Box::new(templates::TechnicalFindingsTemplate));
-        manager.register(Box::new(templates::MSUpdateSummaryTemplate));
-        manager.register(Box::new(templates::NotableTemplate));
-        manager.register(Box::new(templates::NotableDetailedTemplate));
-        manager.register(Box::new(templates::FindingStatisticsTemplate));
-        manager.register(Box::new(templates::HostFindingsCsvTemplate));
-        manager.register(Box::new(templates::HostFindingsCsvOlderThanTemplate));
-        manager.register(Box::new(templates::Top25Template));
-        manager.register(Box::new(templates::SansTopTemplate));
-        manager.register(Box::new(templates::FindingsHostTemplate));
-        manager.register(Box::new(templates::FindingsSummaryTemplate));
-        manager.register(Box::new(templates::FindingsSummaryWithPluginIdTemplate));
-        manager.register(Box::new(templates::MaliciousProcessDetectionTemplate));
-        manager.register(Box::new(templates::MissingRootCausesTemplate));
-        manager.register(Box::new(
-            templates::MicrosoftWindowsUnquotedServicePathEnumerationTemplate,
-        ));
-        manager.register(Box::new(templates::MSWSUSFindingsTemplate));
-        manager.register(Box::new(templates::ServiceInventoryTemplate));
-        manager.register(Box::new(templates::UnsupportedOsTemplate));
-        manager.register(Box::new(templates::VirtualMachineSummaryTemplate));
+        register_all_templates(&mut manager);
         manager.load_templates().map_err(error::Error::Template)?;
         manager.display();
         return Ok(());
@@ -417,47 +376,7 @@ fn run() -> Result<(), error::Error> {
                 .map(std::path::PathBuf::from)
                 .collect();
             let mut manager = template::TemplateManager::new(paths);
-            manager.register(Box::new(template::SimpleTemplate));
-            manager.register(Box::new(templates::TemplateTemplate));
-            manager.register(Box::new(templates::AssetsTemplate));
-            manager.register(Box::new(templates::HostSummaryTemplate));
-            manager.register(Box::new(templates::MSPatchSummaryTemplate));
-            manager.register(Box::new(templates::PCIComplianceTemplate));
-            manager.register(Box::new(templates::StigFindingsSummaryTemplate));
-            manager.register(Box::new(templates::StigDetailedTemplate));
-            manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
-            manager.register(Box::new(templates::SslSummaryTemplate));
-            manager.register(Box::new(templates::AuthenticationSummaryTemplate));
-            manager.register(Box::new(templates::RemoteLocalSummaryTemplate));
-            manager.register(Box::new(templates::CoverSheetTemplate));
-            manager.register(Box::new(templates::ExecSummaryTemplate));
-            manager.register(Box::new(templates::ExecutiveSummaryDetailedTemplate));
-            manager.register(Box::new(templates::ExploitablitySummaryTemplate));
-            manager.register(Box::new(templates::FailedAuditsTemplate));
-            manager.register(Box::new(templates::GraphsTemplate));
-            manager.register(Box::new(templates::PluginSummaryTemplate));
-            manager.register(Box::new(templates::RollupSummaryTemplate));
-            manager.register(Box::new(templates::TalkingPointsTemplate));
-            manager.register(Box::new(templates::TechnicalFindingsTemplate));
-            manager.register(Box::new(templates::MSUpdateSummaryTemplate));
-            manager.register(Box::new(templates::NotableTemplate));
-            manager.register(Box::new(templates::NotableDetailedTemplate));
-            manager.register(Box::new(templates::FindingStatisticsTemplate));
-            manager.register(Box::new(templates::HostFindingsCsvTemplate));
-            manager.register(Box::new(templates::HostFindingsCsvOlderThanTemplate));
-            manager.register(Box::new(templates::FixListTemplate));
-            manager.register(Box::new(templates::Top25Template));
-            manager.register(Box::new(templates::SansTopTemplate));
-            manager.register(Box::new(templates::FindingsHostTemplate));
-            manager.register(Box::new(templates::FindingsSummaryTemplate));
-            manager.register(Box::new(templates::FindingsSummaryWithPluginIdTemplate));
-            manager.register(Box::new(templates::MaliciousProcessDetectionTemplate));
-            manager.register(Box::new(templates::MissingRootCausesTemplate));
-            manager.register(Box::new(templates::MicrosoftWindowsUnquotedServicePathEnumerationTemplate));
-            manager.register(Box::new(templates::MSWSUSFindingsTemplate));
-            manager.register(Box::new(templates::ServiceInventoryTemplate));
-            manager.register(Box::new(templates::UnsupportedOsTemplate));
-            manager.register(Box::new(templates::VirtualMachineSummaryTemplate));
+            register_all_templates(&mut manager);
             manager.load_templates().map_err(error::Error::Template)?;
 
             let mut template_args_map: HashMap<String, String> = cfg
@@ -513,49 +432,7 @@ fn run() -> Result<(), error::Error> {
                 .map(std::path::PathBuf::from)
                 .collect();
             let mut manager = template::TemplateManager::new(paths);
-            manager.register(Box::new(template::SimpleTemplate));
-            manager.register(Box::new(templates::TemplateTemplate));
-            manager.register(Box::new(templates::AssetsTemplate));
-            manager.register(Box::new(templates::HostSummaryTemplate));
-            manager.register(Box::new(templates::MSPatchSummaryTemplate));
-            manager.register(Box::new(templates::PCIComplianceTemplate));
-            manager.register(Box::new(templates::StigFindingsSummaryTemplate));
-            manager.register(Box::new(templates::StigDetailedTemplate));
-            manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
-            manager.register(Box::new(templates::SslSummaryTemplate));
-            manager.register(Box::new(templates::AuthenticationSummaryTemplate));
-            manager.register(Box::new(templates::RemoteLocalSummaryTemplate));
-            manager.register(Box::new(templates::CoverSheetTemplate));
-            manager.register(Box::new(templates::ExecSummaryTemplate));
-            manager.register(Box::new(templates::ExecutiveSummaryDetailedTemplate));
-            manager.register(Box::new(templates::ExploitablitySummaryTemplate));
-            manager.register(Box::new(templates::FailedAuditsTemplate));
-            manager.register(Box::new(templates::GraphsTemplate));
-            manager.register(Box::new(templates::PluginSummaryTemplate));
-            manager.register(Box::new(templates::RollupSummaryTemplate));
-            manager.register(Box::new(templates::TalkingPointsTemplate));
-            manager.register(Box::new(templates::TechnicalFindingsTemplate));
-            manager.register(Box::new(templates::MSUpdateSummaryTemplate));
-            manager.register(Box::new(templates::NotableTemplate));
-            manager.register(Box::new(templates::NotableDetailedTemplate));
-            manager.register(Box::new(templates::FindingStatisticsTemplate));
-            manager.register(Box::new(templates::HostFindingsCsvTemplate));
-            manager.register(Box::new(templates::HostFindingsCsvOlderThanTemplate));
-            manager.register(Box::new(templates::FixListTemplate));
-            manager.register(Box::new(templates::Top25Template));
-            manager.register(Box::new(templates::SansTopTemplate));
-            manager.register(Box::new(templates::FindingsHostTemplate));
-            manager.register(Box::new(templates::FindingsSummaryTemplate));
-            manager.register(Box::new(templates::FindingsSummaryWithPluginIdTemplate));
-            manager.register(Box::new(templates::MaliciousProcessDetectionTemplate));
-            manager.register(Box::new(templates::MissingRootCausesTemplate));
-            manager.register(Box::new(
-                templates::MicrosoftWindowsUnquotedServicePathEnumerationTemplate,
-            ));
-            manager.register(Box::new(templates::MSWSUSFindingsTemplate));
-            manager.register(Box::new(templates::ServiceInventoryTemplate));
-            manager.register(Box::new(templates::UnsupportedOsTemplate));
-            manager.register(Box::new(templates::VirtualMachineSummaryTemplate));
+            register_all_templates(&mut manager);
             manager.load_templates().map_err(error::Error::Template)?;
 
             let mut template_args_map: HashMap<String, String> = cfg
@@ -679,6 +556,52 @@ fn run() -> Result<(), error::Error> {
         None => {}
     }
     Ok(())
+}
+
+fn register_all_templates(manager: &mut template::TemplateManager) {
+    manager.register(Box::new(template::SimpleTemplate));
+    manager.register(Box::new(templates::TemplateTemplate));
+    manager.register(Box::new(templates::AssetsTemplate));
+    manager.register(Box::new(templates::HostSummaryTemplate));
+    manager.register(Box::new(templates::MSPatchSummaryTemplate));
+    manager.register(Box::new(templates::PCIComplianceTemplate));
+    manager.register(Box::new(templates::StigFindingsSummaryTemplate));
+    manager.register(Box::new(templates::StigDetailedTemplate));
+    manager.register(Box::new(templates::SslMediumStrCipherSupportTemplate));
+    manager.register(Box::new(templates::SslSummaryTemplate));
+    manager.register(Box::new(templates::AuthenticationSummaryTemplate));
+    manager.register(Box::new(templates::RemoteLocalSummaryTemplate));
+    manager.register(Box::new(templates::CoverSheetTemplate));
+    manager.register(Box::new(templates::ExecSummaryTemplate));
+    manager.register(Box::new(templates::ExecutiveSummaryDetailedTemplate));
+    manager.register(Box::new(templates::ExploitablitySummaryTemplate));
+    manager.register(Box::new(templates::FailedAuditsTemplate));
+    manager.register(Box::new(templates::GraphsTemplate));
+    manager.register(Box::new(templates::PluginSummaryTemplate));
+    manager.register(Box::new(templates::RollupSummaryTemplate));
+    manager.register(Box::new(templates::TalkingPointsTemplate));
+    manager.register(Box::new(templates::TechnicalFindingsTemplate));
+    manager.register(Box::new(templates::MSUpdateSummaryTemplate));
+    manager.register(Box::new(templates::NotableTemplate));
+    manager.register(Box::new(templates::NotableDetailedTemplate));
+    manager.register(Box::new(templates::FindingStatisticsTemplate));
+    manager.register(Box::new(templates::HostFindingsCsvTemplate));
+    manager.register(Box::new(templates::HostFindingsCsvOlderThanTemplate));
+    manager.register(Box::new(templates::FixListTemplate));
+    manager.register(Box::new(templates::Top25Template));
+    manager.register(Box::new(templates::SansTopTemplate));
+    manager.register(Box::new(templates::FindingsHostTemplate));
+    manager.register(Box::new(templates::FindingsSummaryTemplate));
+    manager.register(Box::new(templates::FindingsSummaryWithPluginIdTemplate));
+    manager.register(Box::new(templates::MaliciousProcessDetectionTemplate));
+    manager.register(Box::new(templates::MissingRootCausesTemplate));
+    manager.register(Box::new(
+        templates::MicrosoftWindowsUnquotedServicePathEnumerationTemplate,
+    ));
+    manager.register(Box::new(templates::MSWSUSFindingsTemplate));
+    manager.register(Box::new(templates::ServiceInventoryTemplate));
+    manager.register(Box::new(templates::UnsupportedOsTemplate));
+    manager.register(Box::new(templates::VirtualMachineSummaryTemplate));
 }
 
 fn init_logging(level: &str, format: &str) {

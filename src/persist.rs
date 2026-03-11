@@ -14,6 +14,14 @@ struct LastId {
     id: i64,
 }
 
+impl LastId {
+    fn as_i32(self) -> Result<i32, diesel::result::Error> {
+        self.id
+            .try_into()
+            .map_err(|_| diesel::result::Error::RollbackTransaction)
+    }
+}
+
 #[derive(Insertable)]
 #[diesel(table_name = schema::nessus_reports)]
 struct NewReport<'a> {
@@ -277,22 +285,13 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
         // 1) Scanner upsert (by type + version)
         let scanner_type = report.scanner.scanner_type.as_str();
         let scanner_version = report.scanner.scanner_version.as_deref();
-        let scanner_id: i32 = if let Some(ver) = scanner_version {
+        let existing_scanner: Option<i32> = if let Some(ver) = scanner_version {
             scn::scanners
                 .filter(scn::scanner_type.eq(scanner_type))
                 .filter(scn::scanner_version.eq(ver))
                 .select(scn::id)
                 .first::<i32>(conn)
                 .optional()?
-                .unwrap_or_else(|| {
-                    diesel::insert_into(scn::scanners)
-                        .values(NewScanner { scanner_type, scanner_version })
-                        .execute(conn)
-                        .expect("insert scanner");
-                    diesel::sql_query("SELECT last_insert_rowid() AS id")
-                        .get_result::<LastId>(conn)
-                        .expect("last id").id as i32
-                })
         } else {
             scn::scanners
                 .filter(scn::scanner_type.eq(scanner_type))
@@ -300,15 +299,17 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
                 .select(scn::id)
                 .first::<i32>(conn)
                 .optional()?
-                .unwrap_or_else(|| {
-                    diesel::insert_into(scn::scanners)
-                        .values(NewScanner { scanner_type, scanner_version })
-                        .execute(conn)
-                        .expect("insert scanner");
-                    diesel::sql_query("SELECT last_insert_rowid() AS id")
-                        .get_result::<LastId>(conn)
-                        .expect("last id").id as i32
-                })
+        };
+        let scanner_id: i32 = match existing_scanner {
+            Some(id) => id,
+            None => {
+                diesel::insert_into(scn::scanners)
+                    .values(NewScanner { scanner_type, scanner_version })
+                    .execute(conn)?;
+                diesel::sql_query("SELECT last_insert_rowid() AS id")
+                    .get_result::<LastId>(conn)?
+                    .as_i32()?
+            }
         };
 
         // 2) Report row
@@ -324,7 +325,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
             .execute(conn)?;
         let report_id = diesel::sql_query("SELECT last_insert_rowid() AS id")
             .get_result::<LastId>(conn)?
-            .id as i32;
+            .as_i32()?;
 
         // 3) Hosts (batch insert, then fetch ids in order)
         let new_hosts: Vec<NewHost> = report
@@ -476,7 +477,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
                         .execute(conn)?;
                     let id = diesel::sql_query("SELECT last_insert_rowid() AS id")
                         .get_result::<LastId>(conn)?
-                        .id as i32;
+                        .as_i32()?;
                     attachment_id_map[idx] = Some(id);
                 }
             }
@@ -543,7 +544,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
                 .execute(conn)?;
             let id = diesel::sql_query("SELECT last_insert_rowid() AS id")
                 .get_result::<LastId>(conn)?
-                .id as i32;
+                .as_i32()?;
             item_id_map[idx] = Some(id);
         }
 
@@ -661,7 +662,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
                 .policy_plugins
                 .iter()
                 .map(|pp| NewPolicyPlugin {
-                    policy_id: None,
+                    policy_id: pp.policy_id.and_then(|idx| policy_ids.get(idx as usize).copied()),
                     plugin_id: pp.plugin_id,
                     plugin_name: pp.plugin_name.as_deref(),
                     family_name: pp.family_name.as_deref(),
@@ -678,7 +679,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
                 .family_selections
                 .iter()
                 .map(|fs| NewFamilySelection {
-                    policy_id: None,
+                    policy_id: fs.policy_id.and_then(|idx| policy_ids.get(idx as usize).copied()),
                     family_name: fs.family_name.as_deref(),
                     status: fs.status.as_deref(),
                 })
@@ -693,7 +694,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
                 .plugin_preferences
                 .iter()
                 .map(|pf| NewPluginPreference {
-                    policy_id: None,
+                    policy_id: pf.policy_id.and_then(|idx| policy_ids.get(idx as usize).copied()),
                     plugin_id: pf.plugin_id,
                     fullname: pf.fullname.as_deref(),
                     preference_name: pf.preference_name.as_deref(),
@@ -712,7 +713,7 @@ pub fn to_sqlite(conn: &mut SqliteConnection, report: &crate::parser::NessusRepo
                 .server_preferences
                 .iter()
                 .map(|sp| NewServerPreference {
-                    policy_id: None,
+                    policy_id: sp.policy_id.and_then(|idx| policy_ids.get(idx as usize).copied()),
                     name: sp.name.as_deref(),
                     value: sp.value.as_deref(),
                 })
